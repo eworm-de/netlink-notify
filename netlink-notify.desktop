@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Netlink Notify
+Icon=network-transmit-receive
+Exec=/usr/bin/netlink-notify
+Terminal=false
+Type=Application
+StartupNotify=false
+Categories=Utility
