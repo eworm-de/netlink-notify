@@ -24,8 +24,8 @@
 #define DEBUG	0
 #endif
 
-#define ICON_NETWORK_ONLINE	"network-transmit-receive"
-#define ICON_NETWORK_OFFLINE	"network-error"
+#define ICON_NETWORK_CONNECTED		"netlink-notify-connected"
+#define ICON_NETWORK_DISCONNECTED	"netlink-notify-disconnected"
 
 #define TEXT_TOPIC		"Netlink Notification"
 #define TEXT_NOTIFICATION	"Interface <b>%s</b> is <b>%s</b>."
@@ -89,11 +89,11 @@ static int data_cb(const struct nlmsghdr * nlh, void * data) {
 	}
 	
 	if (notificationref[ifm->ifi_index] == 0) {
-		notification = notify_notification_new(TEXT_TOPIC, notifystr, (ifm->ifi_flags & IFF_RUNNING ? ICON_NETWORK_ONLINE : ICON_NETWORK_OFFLINE));
+		notification = notify_notification_new(TEXT_TOPIC, notifystr, (ifm->ifi_flags & IFF_RUNNING ? ICON_NETWORK_CONNECTED : ICON_NETWORK_DISCONNECTED));
 		notificationref[ifm->ifi_index] = (size_t)notification;
 	} else {
 		notification = (NotifyNotification *)notificationref[ifm->ifi_index];
-		notify_notification_update(notification, TEXT_TOPIC, notifystr, (ifm->ifi_flags & IFF_RUNNING ? ICON_NETWORK_ONLINE : ICON_NETWORK_OFFLINE));
+		notify_notification_update(notification, TEXT_TOPIC, notifystr, (ifm->ifi_flags & IFF_RUNNING ? ICON_NETWORK_CONNECTED : ICON_NETWORK_DISCONNECTED));
 	}
 
 	notify_notification_set_timeout(notification, NOTIFICATION_TIMEOUT);
