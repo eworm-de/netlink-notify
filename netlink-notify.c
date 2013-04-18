@@ -5,19 +5,26 @@
  * of the GNU General Public License, incorporated herein by reference.
  */
 
+#include <asm/types.h>
+#include <unistd.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
+
+#include <ifaddrs.h>
+#include <linux/if.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 #include <libnotify/notify.h>
 
-#include <libmnl/libmnl.h>
-#include <linux/if.h>
-#include <linux/if_link.h>
-#include <linux/rtnetlink.h>
-
 #define PROGNAME	"netlink-notify"
+
+#define MYPROTO NETLINK_ROUTE
+#define MYMGRP RTMGRP_IPV4_ROUTE
 
 #define NOTIFICATION_TIMEOUT	10000
 #ifndef DEBUG
@@ -27,80 +34,199 @@
 #define ICON_NETWORK_CONNECTED		"netlink-notify-connected"
 #define ICON_NETWORK_DISCONNECTED	"netlink-notify-disconnected"
 
-#define TEXT_TOPIC		"Netlink Notification"
-#define TEXT_NOTIFICATION	"Interface <b>%s</b> is <b>%s</b>."
-#define TEXT_NOTIFICATION_DEBUG	"%s: Interface %s (index %d) is %s.\n"
+#define TEXT_TOPIC	"Netlink Notification"
+#define TEXT_NEWLINK	"Interface <b>%s</b> is <b>%s</b>."
+#define TEXT_NEWADDR	"Interface <b>%s</b> is <b>%s</b>,\nnew address <b>%s</b>/%d."
+#define TEXT_DELLINK	"An interface has gone away."
 
-// we need these to be global...
-unsigned int netlinksize = 1; // never use 0 and avoid overwriting the main pointer...
-size_t * notificationref;
-char * program = NULL;
+#define TEXT_NONE	"(NONE)"
 
-static int data_attr_cb(const struct nlattr * attr, void * data) {
-	const struct nlattr ** tb = data;
-	int type = mnl_attr_get_type(attr);
+#define CHECK_CONNECTED	IFF_LOWER_UP
 
-	if (mnl_attr_type_valid(attr, IFLA_MAX) < 0)
-		return MNL_CB_OK;
+char *program;
+unsigned int maxinterface = 0;
+NotifyNotification ** notification;
+     
+/*** newstr_link ***/
+char * newstr_link(char *text, char *interface, unsigned int flags) {
+	char *notifystr;
 
-	switch(type) {
-		case IFLA_MTU:
-			if (mnl_attr_validate(attr, MNL_TYPE_U32) < 0) {
-				fprintf(stderr, "%s: Invalid netlink attribute.\n", program);
-				return MNL_CB_ERROR;
-			}
-			break;
-		case IFLA_IFNAME:
-			if (mnl_attr_validate(attr, MNL_TYPE_STRING) < 0) {
-				fprintf(stderr, "%s: Invalid netlink attribute.\n", program);
-				return MNL_CB_ERROR;
-			}
-			break;
-	}
-	tb[type] = attr;
-	return MNL_CB_OK;
+	notifystr = malloc(strlen(text) + strlen(interface) + 4);
+	sprintf(notifystr, text, interface, (flags & CHECK_CONNECTED) ? "up" : "down");
+
+	return notifystr;
 }
 
-static int data_cb(const struct nlmsghdr * nlh, void * data) {
-	struct nlattr * tb[IFLA_MAX + 1] = {};
-	struct ifinfomsg * ifm = mnl_nlmsg_get_payload(nlh);
+/*** newstr_addr ***/
+char * newstr_addr(char *text, char *interface, unsigned int flags, unsigned char family, void *ipaddr, unsigned char prefix) {
+	char *notifystr;
+	char buf[64];
 
-	char * notifystr = NULL;
-	const char * interface = NULL;
-	NotifyNotification * notification = NULL;
+	inet_ntop(family, ipaddr, buf, sizeof(buf));
+	notifystr = malloc(strlen(text) + strlen(interface) + strlen(buf));
+	sprintf(notifystr, text, interface, (flags & CHECK_CONNECTED) ? "up" : "down", buf, prefix);
+
+	return notifystr;
+}
+
+/*** newstr_away ***/
+char * newstr_away(char *text) {
+	char *notifystr;
+
+	notifystr = malloc(strlen(text));
+	sprintf(notifystr, text);
+
+	return notifystr;
+}
+
+/*** open_netlink ***/
+int open_netlink (void) {
+	int sock = socket (AF_NETLINK, SOCK_RAW, MYPROTO);
+	struct sockaddr_nl addr;
+
+	memset ((void *) &addr, 0, sizeof (addr));
+
+	if (sock < 0)
+		return sock;
+	addr.nl_family = AF_NETLINK;
+	addr.nl_pid = getpid ();
+	addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV6_IFADDR;
+	if (bind (sock, (struct sockaddr *) &addr, sizeof (addr)) < 0)
+		return -1;
+	return sock;
+}
+
+/*** read_event ***/
+int read_event (int sockint, int (*msg_handler) (struct sockaddr_nl *, struct nlmsghdr *)) {
+	int status;
+	int ret = 0;
+	char buf[4096];
+	struct iovec iov = { buf, sizeof buf };
+	struct sockaddr_nl snl;
+	struct msghdr msg = { (void *) &snl, sizeof snl, &iov, 1, NULL, 0, 0 };
+	struct nlmsghdr *h;
+
+	status = recvmsg (sockint, &msg, 0);
+
+	if (status < 0) {
+		/* Socket non-blocking so bail out once we have read everything */
+		if (errno == EWOULDBLOCK || errno == EAGAIN)
+			return ret;
+
+		/* Anything else is an error */
+		fprintf (stderr, "read_netlink: Error recvmsg: %d\n", status);
+		return status;
+	}
+
+	if (status == 0)
+		fprintf (stderr, "read_netlink: EOF\n");
+
+	/* We need to handle more than one message per 'recvmsg' */
+	for (h = (struct nlmsghdr *) buf; NLMSG_OK (h, (unsigned int) status); h = NLMSG_NEXT (h, status)) {
+		/* Finish reading */
+		if (h->nlmsg_type == NLMSG_DONE)
+			return ret;
+
+		/* Message is some kind of error */
+		if (h->nlmsg_type == NLMSG_ERROR) {
+			fprintf (stderr, "read_netlink: Message is an error - decode TBD\n");
+			return -1;
+		}
+
+		/* Call message handler */
+		if (msg_handler) {
+			ret = (*msg_handler) (&snl, h);
+			if (ret < 0) {
+				fprintf (stderr, "read_netlink: Message hander error %d\n", ret);
+				return ret;
+			}
+		} else {
+			fprintf (stderr, "read_netlink: Error NULL message handler\n");
+			return -1;
+		}
+	}
+
+	return ret;
+}
+
+/*** msg_handler ***/
+static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
+	char *notifystr = NULL;
 	unsigned int errcount = 0;
+	GError *error = NULL;
+	struct ifaddrmsg *ifa;
+	struct ifinfomsg *ifi;
+	struct rtattr *rth;
+	int rtl;
+	char name[IFNAMSIZ];
 
-	gboolean res = FALSE;
-	GError * error = NULL;
+	ifa = (struct ifaddrmsg *) NLMSG_DATA (msg);
+	ifi = (struct ifinfomsg *) NLMSG_DATA (msg);
 
-	mnl_attr_parse(nlh, sizeof(* ifm), data_attr_cb, tb);
+	if_indextoname(ifi->ifi_index, name);
 
-	interface = mnl_attr_get_str(tb[IFLA_IFNAME]);
-	notifystr = malloc(strlen(interface) + strlen(TEXT_NOTIFICATION) + 1); // 2* %s is enough for "down", but we need an additional byte for \n
-	sprintf(notifystr, TEXT_NOTIFICATION, interface, (ifm->ifi_flags & IFF_RUNNING ? "up" : "down"));
-#if DEBUG
-	printf(TEXT_NOTIFICATION_DEBUG, program, interface, ifm->ifi_index, (ifm->ifi_flags & IFF_RUNNING ? "up" : "down"));
+	/* make sure we have alloced memory for the struct array */
+	if (maxinterface < ifi->ifi_index) {
+		notification = realloc(notification, (ifi->ifi_index + 1) * sizeof(NotifyNotification));
+		for(; maxinterface < ifi->ifi_index; maxinterface++)
+			notification[maxinterface] = NULL;
+	}
+
+	switch (msg->nlmsg_type) {
+		/* just return for cases we want to ignore */
+		case RTM_NEWADDR:
+			rth = IFA_RTA (ifa);
+			rtl = IFA_PAYLOAD (msg);
+		
+			while (rtl && RTA_OK (rth, rtl)) {
+				if (rth->rta_type == IFA_LOCAL)
+					notifystr = newstr_addr(TEXT_NEWADDR, name, ifi->ifi_flags,
+						ifa->ifa_family, RTA_DATA (rth), ifa->ifa_prefixlen);
+				rth = RTA_NEXT (rth, rtl);
+			}
+			if (notifystr == NULL) {
+				return 0;
+			}
+#if DEUBG
+			puts (notifystr);
 #endif
-
-	if (netlinksize < ifm->ifi_index) {
-		notificationref = realloc(notificationref, (ifm->ifi_index + 1) * sizeof(size_t));
-		while(netlinksize < ifm->ifi_index)
-			notificationref[++netlinksize] = 0;
+			break;
+		case RTM_DELADDR:
+			return 0;
+		case RTM_NEWROUTE:
+			return 0;
+		case RTM_DELROUTE:
+			return 0;
+		case RTM_NEWLINK:
+			notifystr = newstr_link(TEXT_NEWLINK, name, ifi->ifi_flags);
+#if DEBUG
+			puts (notifystr);
+#endif
+			break;
+		case RTM_DELLINK:
+			notifystr = newstr_away(TEXT_DELLINK);
+#if DEBUG
+			puts (notifystr);
+#endif
+			break;
+		default:
+			/* we should not get here... */
+			fprintf(stderr, "msg_handler: Unknown netlink nlmsg_type %d\n", msg->nlmsg_type);
+			return 0;
 	}
-	
-	if (notificationref[ifm->ifi_index] == 0) {
-		notification = notify_notification_new(TEXT_TOPIC, notifystr, (ifm->ifi_flags & IFF_RUNNING ? ICON_NETWORK_CONNECTED : ICON_NETWORK_DISCONNECTED));
-		notificationref[ifm->ifi_index] = (size_t)notification;
-	} else {
-		notification = (NotifyNotification *)notificationref[ifm->ifi_index];
-		notify_notification_update(notification, TEXT_TOPIC, notifystr, (ifm->ifi_flags & IFF_RUNNING ? ICON_NETWORK_CONNECTED : ICON_NETWORK_DISCONNECTED));
-	}
 
-	notify_notification_set_timeout(notification, NOTIFICATION_TIMEOUT);
-	notify_notification_set_category(notification, PROGNAME);
-	notify_notification_set_urgency(notification, NOTIFY_URGENCY_NORMAL);
+	if (notification[ifi->ifi_index] == NULL)
+		notification[ifi->ifi_index] = notify_notification_new(TEXT_TOPIC, notifystr,
+			(ifi->ifi_flags & CHECK_CONNECTED ? ICON_NETWORK_CONNECTED : ICON_NETWORK_DISCONNECTED));
+	else
+		notify_notification_update(notification[ifi->ifi_index], TEXT_TOPIC, notifystr,
+			(ifi->ifi_flags & CHECK_CONNECTED ? ICON_NETWORK_CONNECTED : ICON_NETWORK_DISCONNECTED));
 
-	while(!notify_notification_show(notification, &error)) {
+	notify_notification_set_timeout(notification[ifi->ifi_index], NOTIFICATION_TIMEOUT);
+	notify_notification_set_category(notification[ifi->ifi_index], PROGNAME);
+	notify_notification_set_urgency(notification[ifi->ifi_index], NOTIFY_URGENCY_NORMAL);
+
+	while (!notify_notification_show (notification[ifi->ifi_index], &error)) {
 		if (errcount > 1) {
 			fprintf(stderr, "%s: Looks like we can not reconnect to notification daemon... Exiting.\n", program);
 			exit(EXIT_FAILURE);
@@ -108,64 +234,45 @@ static int data_cb(const struct nlmsghdr * nlh, void * data) {
 			g_printerr("%s: Error \"%s\" while trying to show notification. Trying to reconnect.\n", program, error->message);
 			errcount++;
 
-			g_error_free(error);
+			g_error_free (error);
 			error = NULL;
 
-			notify_uninit();
+			notify_uninit ();
 
-			usleep(500 * 1000);
+			usleep (500 * 1000);
 
-			if(!notify_init(PROGNAME)) {
+			if (!notify_init (PROGNAME)) {
 				fprintf(stderr, "%s: Can't create notify.\n", program);
 				exit(EXIT_FAILURE);
 			}
 		}
 	}
 	errcount = 0;
-
 	free(notifystr);
 
-	return MNL_CB_OK;
+	return 0;
 }
 
-int main(int argc, char ** argv) {
-	struct mnl_socket * nl;
-	char buf[MNL_SOCKET_BUFFER_SIZE];
-	int ret;
+/*** main ***/
+int main (int argc, char **argv) {
+	int nls;
 
 	program = argv[0];
+	printf ("%s: %s v%s (compiled: " __DATE__ ", " __TIME__ ")\n", argv[0], PROGNAME, VERSION);
 
-	printf("%s: %s v%s (compiled: " __DATE__ ", " __TIME__ ")\n", argv[0], PROGNAME, VERSION);
-
-	if(!notify_init(PROGNAME)) {
-		fprintf(stderr, "%s: Can't create notify.\n", argv[0]);
-		exit(EXIT_FAILURE);
+	nls = open_netlink ();
+	if (nls < 0) {
+		fprintf (stderr, "%s: Error opening netlin socket!", argv[0]);
+		exit (EXIT_FAILURE);
 	}
 
-	nl = mnl_socket_open(NETLINK_ROUTE);
-	if (!nl) {
-		fprintf(stderr, "%s: Can't create netlink socket.\n", argv[0]);
-		exit(EXIT_FAILURE);
+	if (!notify_init (PROGNAME)) {
+		fprintf (stderr, "%s: Can't create notify.\n", argv[0]);
+		exit (EXIT_FAILURE);
 	}
 
-	if (mnl_socket_bind(nl, RTMGRP_LINK, MNL_SOCKET_AUTOPID) < 0) {
-		fprintf(stderr, "%s: Can't bind netlink socket.\n", argv[0]);
-		exit(EXIT_FAILURE);
-	}
-
-	ret = mnl_socket_recvfrom(nl, buf, sizeof(buf));
-	while (ret > 0) {
-		ret = mnl_cb_run(buf, ret, 0, 0, data_cb, NULL);
-		if (ret <= 0)
-			break;
-		ret = mnl_socket_recvfrom(nl, buf, sizeof(buf));
-	}
-	if (ret == -1) {
-		fprintf(stderr, "%s: An error occured reading from netlink socket.\n", argv[0]);
-		exit(EXIT_FAILURE);
-	}
-
-	mnl_socket_close(nl);
+	while (1)
+		read_event (nls, msg_handler);
 
 	return EXIT_SUCCESS;
 }
