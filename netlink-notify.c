@@ -215,16 +215,16 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			return 0;
 	}
 
-	if (notification[ifi->ifi_index] == NULL)
+	if (notification[ifi->ifi_index] == NULL) {
 		notification[ifi->ifi_index] = notify_notification_new(TEXT_TOPIC, notifystr,
 			(ifi->ifi_flags & CHECK_CONNECTED ? ICON_NETWORK_CONNECTED : ICON_NETWORK_DISCONNECTED));
-	else
+		notify_notification_set_category(notification[ifi->ifi_index], PROGNAME);
+		notify_notification_set_urgency(notification[ifi->ifi_index], NOTIFY_URGENCY_NORMAL);
+	} else
 		notify_notification_update(notification[ifi->ifi_index], TEXT_TOPIC, notifystr,
 			(ifi->ifi_flags & CHECK_CONNECTED ? ICON_NETWORK_CONNECTED : ICON_NETWORK_DISCONNECTED));
 
 	notify_notification_set_timeout(notification[ifi->ifi_index], NOTIFICATION_TIMEOUT);
-	notify_notification_set_category(notification[ifi->ifi_index], PROGNAME);
-	notify_notification_set_urgency(notification[ifi->ifi_index], NOTIFY_URGENCY_NORMAL);
 
 	while (!notify_notification_show (notification[ifi->ifi_index], &error)) {
 		if (errcount > 1) {
