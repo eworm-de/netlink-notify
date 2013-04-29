@@ -46,7 +46,7 @@
 char *program;
 unsigned int maxinterface = 0;
 NotifyNotification ** notification;
-     
+
 /*** newstr_link ***/
 char * newstr_link(char *text, char *interface, unsigned int flags) {
 	char *notifystr;
