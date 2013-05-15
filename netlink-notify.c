@@ -30,6 +30,9 @@
 #ifndef DEBUG
 #define DEBUG	0
 #endif
+#ifndef IPV6
+#define IPV6	0
+#endif
 
 #define ICON_NETWORK_CONNECTED		"netlink-notify-connected"
 #define ICON_NETWORK_DISCONNECTED	"netlink-notify-disconnected"
@@ -179,7 +182,11 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			rtl = IFA_PAYLOAD (msg);
 		
 			while (rtl && RTA_OK (rth, rtl)) {
-				if (rth->rta_type == IFA_LOCAL)
+				if (rth->rta_type == IFA_LOCAL /* IPv4 */
+#if IPV6
+						|| rth->rta_type == IFA_ADDRESS /* IPv6 */
+#endif
+						)
 					notifystr = newstr_addr(TEXT_NEWADDR, name, ifi->ifi_flags,
 						ifa->ifa_family, RTA_DATA (rth), ifa->ifa_prefixlen);
 				rth = RTA_NEXT (rth, rtl);
