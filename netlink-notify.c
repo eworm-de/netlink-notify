@@ -187,7 +187,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			if (notifystr == NULL) {
 				return 0;
 			}
-#if DEUBG
+#if DEBUG
 			puts (notifystr);
 #endif
 			break;
