@@ -191,9 +191,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			if (notifystr == NULL) {
 				return 0;
 			}
-#if DEBUG
-			puts (notifystr);
-#endif
+
 			address = notify_notification_new(TEXT_TOPIC, notifystr, ICON_NETWORK_ADDRESS);
 			notify_notification_set_category(address, PROGNAME);
 			notify_notification_set_urgency(address, NOTIFY_URGENCY_NORMAL);
@@ -208,21 +206,19 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			return 0;
 		case RTM_NEWLINK:
 			notifystr = newstr_link(TEXT_NEWLINK, name, ifi->ifi_flags);
-#if DEBUG
-			puts (notifystr);
-#endif
 			break;
 		case RTM_DELLINK:
 			notifystr = newstr_away(TEXT_DELLINK);
-#if DEBUG
-			puts (notifystr);
-#endif
 			break;
 		default:
 			/* we should not get here... */
 			fprintf(stderr, "msg_handler: Unknown netlink nlmsg_type %d\n", msg->nlmsg_type);
 			return 0;
 	}
+
+#if DEBUG
+	puts (notifystr);
+#endif
 
 	if (address == NULL) {
 		if (notification[ifi->ifi_index] == NULL) {
