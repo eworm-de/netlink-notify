@@ -30,16 +30,14 @@
 #ifndef DEBUG
 #define DEBUG	0
 #endif
-#ifndef IPV6
-#define IPV6	0
-#endif
 
+#define ICON_NETWORK_ADDRESS		"netlink-notify-address"
 #define ICON_NETWORK_CONNECTED		"netlink-notify-connected"
 #define ICON_NETWORK_DISCONNECTED	"netlink-notify-disconnected"
 
 #define TEXT_TOPIC	"Netlink Notification"
 #define TEXT_NEWLINK	"Interface <b>%s</b> is <b>%s</b>."
-#define TEXT_NEWADDR	"Interface <b>%s</b> is <b>%s</b>,\nnew address <b>%s</b>/%d."
+#define TEXT_NEWADDR	"Interface <b>%s</b> has new %s address\n<b>%s</b>/%d."
 #define TEXT_DELLINK	"An interface has gone away."
 
 #define TEXT_NONE	"(NONE)"
@@ -61,13 +59,13 @@ char * newstr_link(char *text, char *interface, unsigned int flags) {
 }
 
 /*** newstr_addr ***/
-char * newstr_addr(char *text, char *interface, unsigned int flags, unsigned char family, void *ipaddr, unsigned char prefix) {
+char * newstr_addr(char *text, char *interface, unsigned char family, void *ipaddr, unsigned char prefix) {
 	char *notifystr;
 	char buf[64];
 
 	inet_ntop(family, ipaddr, buf, sizeof(buf));
 	notifystr = malloc(strlen(text) + strlen(interface) + strlen(buf));
-	sprintf(notifystr, text, interface, (flags & CHECK_CONNECTED) ? "up" : "down", buf, prefix);
+	sprintf(notifystr, text, interface, family == AF_INET6 ? "IPv6" : "IP", buf, prefix);
 
 	return notifystr;
 }
@@ -162,6 +160,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	struct rtattr *rth;
 	int rtl;
 	char name[IFNAMSIZ];
+	NotifyNotification * address = NULL;
 
 	ifa = (struct ifaddrmsg *) NLMSG_DATA (msg);
 	ifi = (struct ifinfomsg *) NLMSG_DATA (msg);
@@ -182,12 +181,10 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			rtl = IFA_PAYLOAD (msg);
 		
 			while (rtl && RTA_OK (rth, rtl)) {
-				if (rth->rta_type == IFA_LOCAL /* IPv4 */
-#if IPV6
-						|| rth->rta_type == IFA_ADDRESS /* IPv6 */
-#endif
-						)
-					notifystr = newstr_addr(TEXT_NEWADDR, name, ifi->ifi_flags,
+				if ((rth->rta_type == IFA_LOCAL /* IPv4 */
+						|| rth->rta_type == IFA_ADDRESS /* IPv6 */)
+						&& ifa->ifa_scope == RT_SCOPE_UNIVERSE /* no IPv6 scope link */)
+					notifystr = newstr_addr(TEXT_NEWADDR, name,
 						ifa->ifa_family, RTA_DATA (rth), ifa->ifa_prefixlen);
 				rth = RTA_NEXT (rth, rtl);
 			}
@@ -197,6 +194,11 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 #if DEBUG
 			puts (notifystr);
 #endif
+			address = notify_notification_new(TEXT_TOPIC, notifystr, ICON_NETWORK_ADDRESS);
+			notify_notification_set_category(address, PROGNAME);
+			notify_notification_set_urgency(address, NOTIFY_URGENCY_NORMAL);
+			notify_notification_set_timeout(address, NOTIFICATION_TIMEOUT);
+
 			break;
 		case RTM_DELADDR:
 			return 0;
@@ -222,18 +224,20 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			return 0;
 	}
 
-	if (notification[ifi->ifi_index] == NULL) {
-		notification[ifi->ifi_index] = notify_notification_new(TEXT_TOPIC, notifystr,
-			(ifi->ifi_flags & CHECK_CONNECTED ? ICON_NETWORK_CONNECTED : ICON_NETWORK_DISCONNECTED));
-		notify_notification_set_category(notification[ifi->ifi_index], PROGNAME);
-		notify_notification_set_urgency(notification[ifi->ifi_index], NOTIFY_URGENCY_NORMAL);
-	} else
-		notify_notification_update(notification[ifi->ifi_index], TEXT_TOPIC, notifystr,
-			(ifi->ifi_flags & CHECK_CONNECTED ? ICON_NETWORK_CONNECTED : ICON_NETWORK_DISCONNECTED));
+	if (address == NULL) {
+		if (notification[ifi->ifi_index] == NULL) {
+			notification[ifi->ifi_index] = notify_notification_new(TEXT_TOPIC, notifystr,
+				(ifi->ifi_flags & CHECK_CONNECTED ? ICON_NETWORK_CONNECTED : ICON_NETWORK_DISCONNECTED));
+			notify_notification_set_category(notification[ifi->ifi_index], PROGNAME);
+			notify_notification_set_urgency(notification[ifi->ifi_index], NOTIFY_URGENCY_NORMAL);
+		} else
+			notify_notification_update(notification[ifi->ifi_index], TEXT_TOPIC, notifystr,
+				(ifi->ifi_flags & CHECK_CONNECTED ? ICON_NETWORK_CONNECTED : ICON_NETWORK_DISCONNECTED));
 
-	notify_notification_set_timeout(notification[ifi->ifi_index], NOTIFICATION_TIMEOUT);
+		notify_notification_set_timeout(notification[ifi->ifi_index], NOTIFICATION_TIMEOUT);
+	}
 
-	while (!notify_notification_show (notification[ifi->ifi_index], &error)) {
+	while (!notify_notification_show (address ? address : notification[ifi->ifi_index], &error)) {
 		if (errcount > 1) {
 			fprintf(stderr, "%s: Looks like we can not reconnect to notification daemon... Exiting.\n", program);
 			exit(EXIT_FAILURE);
@@ -254,6 +258,9 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			}
 		}
 	}
+
+	if (address)
+		g_object_unref(G_OBJECT(address));
 	errcount = 0;
 	free(notifystr);
 
