@@ -44,9 +44,30 @@
 
 #define CHECK_CONNECTED	IFF_LOWER_UP
 
+struct addresses_seen {
+	char *address;
+	unsigned char prefix;
+	struct addresses_seen *next;
+};
+
 char *program;
 unsigned int maxinterface = 0;
-NotifyNotification ** notification;
+NotifyNotification ** notification = NULL;
+struct addresses_seen *addresses_seen = NULL;
+
+/*** free_chain ***/
+void free_chain(struct addresses_seen *first) {
+	struct addresses_seen *addresses_seen = first->next;
+
+	while (addresses_seen != NULL) {
+		struct addresses_seen *next = addresses_seen->next;
+		free(addresses_seen->address);
+		free(addresses_seen);
+		addresses_seen = next;
+	}
+
+	first->next = NULL;
+}
 
 /*** newstr_link ***/
 char * newstr_link(char *text, char *interface, unsigned int flags) {
@@ -59,13 +80,11 @@ char * newstr_link(char *text, char *interface, unsigned int flags) {
 }
 
 /*** newstr_addr ***/
-char * newstr_addr(char *text, char *interface, unsigned char family, void *ipaddr, unsigned char prefix) {
+char * newstr_addr(char *text, char *interface, unsigned char family, char *ipaddr, unsigned char prefix) {
 	char *notifystr;
-	char buf[64];
 
-	inet_ntop(family, ipaddr, buf, sizeof(buf));
-	notifystr = malloc(strlen(text) + strlen(interface) + strlen(buf));
-	sprintf(notifystr, text, interface, family == AF_INET6 ? "IPv6" : "IP", buf, prefix);
+	notifystr = malloc(strlen(text) + strlen(interface) + strlen(ipaddr));
+	sprintf(notifystr, text, interface, family == AF_INET6 ? "IPv6" : "IP", ipaddr, prefix);
 
 	return notifystr;
 }
@@ -160,19 +179,30 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	struct rtattr *rth;
 	int rtl;
 	char name[IFNAMSIZ];
-	NotifyNotification * address = NULL;
+	char buf[64];
+	struct addresses_seen *next;
+	unsigned char seen;
+	NotifyNotification *address = NULL;
 
 	ifa = (struct ifaddrmsg *) NLMSG_DATA (msg);
 	ifi = (struct ifinfomsg *) NLMSG_DATA (msg);
 
 	if_indextoname(ifi->ifi_index, name);
-
-	/* make sure we have alloced memory for the struct array */
+	
+	/* make sure we have alloced memory for NotifyNotification and addresses_seen struct array */
 	if (maxinterface < ifi->ifi_index) {
-		notification = realloc(notification, (ifi->ifi_index + 1) * sizeof(NotifyNotification));
-		for(; maxinterface < ifi->ifi_index; maxinterface++)
+		notification = realloc(notification, (ifi->ifi_index + 1) * sizeof(size_t));
+		addresses_seen = realloc(addresses_seen, (ifi->ifi_index + 1) * sizeof(struct addresses_seen));
+		do {
+			maxinterface++; /* there is no interface with index 0, so this is safe */
 			notification[maxinterface] = NULL;
+			addresses_seen[maxinterface].next = NULL;
+		} while (maxinterface < ifi->ifi_index);
 	}
+
+#if DEBUG
+					printf("Interface %s, flags: %x, msg type: %d\n", name, ifa->ifa_flags, msg->nlmsg_type);
+#endif
 
 	switch (msg->nlmsg_type) {
 		/* just return for cases we want to ignore */
@@ -183,9 +213,40 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			while (rtl && RTA_OK (rth, rtl)) {
 				if ((rth->rta_type == IFA_LOCAL /* IPv4 */
 						|| rth->rta_type == IFA_ADDRESS /* IPv6 */)
-						&& ifa->ifa_scope == RT_SCOPE_UNIVERSE /* no IPv6 scope link */)
+						&& ifa->ifa_scope == RT_SCOPE_UNIVERSE /* no IPv6 scope link */) {
+					inet_ntop(ifa->ifa_family, RTA_DATA (rth), buf, sizeof(buf));
+
+					next = &(addresses_seen[ifi->ifi_index]);
+					seen = 0;
+
+					/* check if we already notified about this address */
+					while (next->next != NULL) {
+						if (strcmp(next->address, buf) == 0 && next->prefix == ifa->ifa_prefixlen) {
+#if DEBUG
+							printf("Already notified about address %s/%d, skipping.\n", buf, ifa->ifa_prefixlen);
+#endif
+							seen++;
+							break;
+						}
+						next = next->next;
+					}
+
+					if (seen)
+						break;
+
+					/* add address to struct */
+					next->address = strdup(buf);
+					next->prefix = ifa->ifa_prefixlen;
+					next->next = malloc(sizeof(struct addresses_seen));
+					next->next->next = NULL;
+
+					/* display notification */
 					notifystr = newstr_addr(TEXT_NEWADDR, name,
-						ifa->ifa_family, RTA_DATA (rth), ifa->ifa_prefixlen);
+						ifa->ifa_family, buf, ifa->ifa_prefixlen);
+
+					/* we are done, no need to run more loops */
+					break;
+				}
 				rth = RTA_NEXT (rth, rtl);
 			}
 			if (notifystr == NULL) {
@@ -206,9 +267,12 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			return 0;
 		case RTM_NEWLINK:
 			notifystr = newstr_link(TEXT_NEWLINK, name, ifi->ifi_flags);
+			if (!(ifi->ifi_flags & CHECK_CONNECTED))
+				free_chain(&(addresses_seen[ifi->ifi_index]));
 			break;
 		case RTM_DELLINK:
 			notifystr = newstr_away(TEXT_DELLINK);
+			free_chain(&(addresses_seen[ifi->ifi_index]));
 			break;
 		default:
 			/* we should not get here... */
@@ -268,7 +332,11 @@ int main (int argc, char **argv) {
 	int nls;
 
 	program = argv[0];
-	printf ("%s: %s v%s (compiled: " __DATE__ ", " __TIME__ ")\n", argv[0], PROGNAME, VERSION);
+	printf ("%s: %s v%s (compiled: " __DATE__ ", " __TIME__
+#if DEBUG
+			", with debug output"
+#endif			
+			")\n", argv[0], PROGNAME, VERSION);
 
 	nls = open_netlink ();
 	if (nls < 0) {
