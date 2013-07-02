@@ -201,7 +201,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	}
 
 #if DEBUG
-					printf("Interface %s, flags: %x, msg type: %d\n", name, ifa->ifa_flags, msg->nlmsg_type);
+					printf("%s: Interface %s, flags: %x, msg type: %d\n", program, name, ifa->ifa_flags, msg->nlmsg_type);
 #endif
 
 	switch (msg->nlmsg_type) {
@@ -223,7 +223,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 					while (next->next != NULL) {
 						if (strcmp(next->address, buf) == 0 && next->prefix == ifa->ifa_prefixlen) {
 #if DEBUG
-							printf("Already notified about address %s/%d, skipping.\n", buf, ifa->ifa_prefixlen);
+							printf("%s: Already notified about address %s/%d, skipping.\n", program, buf, ifa->ifa_prefixlen);
 #endif
 							seen++;
 							break;
@@ -281,7 +281,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	}
 
 #if DEBUG
-	puts (notifystr);
+	printf("%s: %s\n", program, notifystr);
 #endif
 
 	if (address == NULL) {
