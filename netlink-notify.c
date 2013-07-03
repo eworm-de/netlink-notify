@@ -79,6 +79,19 @@ void free_chain(struct addresses_seen *addresses_seen) {
 	}
 }
 
+/*** remove_address ***/
+void remove_address(struct addresses_seen *next, char *address, unsigned char prefix) {
+	while (next->next != NULL) {
+		if (next->address != NULL /* next->address can be NULL if it has been removed from interface */ &&
+				strcmp(next->address, address) == 0 && next->prefix == prefix) {
+			free(next->address);
+			next->address = NULL;
+			next->prefix = 0;
+		}
+		next = next->next;
+	}
+}
+
 /*** newstr_link ***/
 char * newstr_link(char *text, char *interface, unsigned int flags) {
 	char *notifystr;
@@ -217,7 +230,8 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 #endif
 
 	switch (msg->nlmsg_type) {
-		/* just return for cases we want to ignore */
+		/* just return for cases we want to ignore
+		 * use break if a notification has to be displayed */
 		case RTM_NEWADDR:
 			rth = IFA_RTA (ifa);
 			rtl = IFA_PAYLOAD (msg);
@@ -233,7 +247,8 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 
 					/* check if we already notified about this address */
 					while (next->next != NULL) {
-						if (strcmp(next->address, buf) == 0 && next->prefix == ifa->ifa_prefixlen) {
+						if (next->address != NULL /* next->address can be NULL if it has been removed from interface */ &&
+								strcmp(next->address, buf) == 0 && next->prefix == ifa->ifa_prefixlen) {
 #if DEBUG
 							printf("%s: Already notified about address %s/%d, skipping.\n", program, buf, ifa->ifa_prefixlen);
 #endif
@@ -274,6 +289,19 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 
 			break;
 		case RTM_DELADDR:
+			rth = IFA_RTA (ifa);
+			rtl = IFA_PAYLOAD (msg);
+		
+			while (rtl && RTA_OK (rth, rtl)) {
+				if ((rth->rta_type == IFA_LOCAL /* IPv4 */
+						|| rth->rta_type == IFA_ADDRESS /* IPv6 */)
+						&& ifa->ifa_scope == RT_SCOPE_UNIVERSE /* no IPv6 scope link */) {
+					inet_ntop(ifa->ifa_family, RTA_DATA (rth), buf, sizeof(buf));
+					remove_address(&addresses_seen[ifi->ifi_index], buf, ifa->ifa_prefixlen);
+				}
+				rth = RTA_NEXT (rth, rtl);
+			}
+
 			return 0;
 		case RTM_NEWROUTE:
 			return 0;
