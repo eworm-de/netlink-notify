@@ -298,6 +298,9 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 						&& ifa->ifa_scope == RT_SCOPE_UNIVERSE /* no IPv6 scope link */) {
 					inet_ntop(ifa->ifa_family, RTA_DATA (rth), buf, sizeof(buf));
 					remove_address(&addresses_seen[ifi->ifi_index], buf, ifa->ifa_prefixlen);
+
+					/* we are done, no need to run more loops */
+					break;
 				}
 				rth = RTA_NEXT (rth, rtl);
 			}
