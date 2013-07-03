@@ -38,9 +38,7 @@
 #define TEXT_TOPIC	"Netlink Notification"
 #define TEXT_NEWLINK	"Interface <b>%s</b> is <b>%s</b>."
 #define TEXT_NEWADDR	"Interface <b>%s</b> has new %s address\n<b>%s</b>/%d."
-#define TEXT_DELLINK	"An interface has gone away."
-
-#define TEXT_NONE	"(NONE)"
+#define TEXT_DELLINK	"Interface <b>%s</b> has gone away."
 
 #define CHECK_CONNECTED	IFF_LOWER_UP
 
@@ -54,6 +52,7 @@ char *program;
 unsigned int maxinterface = 0;
 NotifyNotification ** notification = NULL;
 struct addresses_seen *addresses_seen = NULL;
+char ** name = NULL;
 
 /*** free_chain ***/
 void free_chain(struct addresses_seen *addresses_seen) {
@@ -113,11 +112,11 @@ char * newstr_addr(char *text, char *interface, unsigned char family, char *ipad
 }
 
 /*** newstr_away ***/
-char * newstr_away(char *text) {
+char * newstr_away(char *text, char *interface) {
 	char *notifystr;
 
-	notifystr = malloc(strlen(text));
-	sprintf(notifystr, text);
+	notifystr = malloc(strlen(text) + strlen(interface));
+	sprintf(notifystr, text, interface);
 
 	return notifystr;
 }
@@ -201,7 +200,6 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	struct ifinfomsg *ifi;
 	struct rtattr *rth;
 	int rtl;
-	char name[IFNAMSIZ];
 	char buf[64];
 	struct addresses_seen *next;
 	unsigned char seen;
@@ -210,23 +208,30 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	ifa = (struct ifaddrmsg *) NLMSG_DATA (msg);
 	ifi = (struct ifinfomsg *) NLMSG_DATA (msg);
 
-	if_indextoname(ifi->ifi_index, name);
-	
 	/* make sure we have alloced memory for NotifyNotification and addresses_seen struct array */
 	if (maxinterface < ifi->ifi_index) {
 		notification = realloc(notification, (ifi->ifi_index + 1) * sizeof(size_t));
 		addresses_seen = realloc(addresses_seen, (ifi->ifi_index + 1) * sizeof(struct addresses_seen));
+		name = realloc(name, (ifi->ifi_index + 1) * sizeof(size_t));
 		do {
 			maxinterface++; /* there is no interface with index 0, so this is safe */
 			notification[maxinterface] = NULL;
 			addresses_seen[maxinterface].address = NULL;
 			addresses_seen[maxinterface].prefix = 0;
 			addresses_seen[maxinterface].next = NULL;
+			name[maxinterface] = NULL;
 		} while (maxinterface < ifi->ifi_index);
 	}
 
+	/* get interface name and store it */
+	if (name[ifi->ifi_index] == NULL) {
+		name[ifi->ifi_index] = realloc(name[ifi->ifi_index], IFNAMSIZ * sizeof(char));
+		sprintf(name[ifi->ifi_index], "(unknown)");
+	}
+	if_indextoname(ifi->ifi_index, name[ifi->ifi_index]);
+
 #if DEBUG
-	printf("%s: Interface %s, flags: %x, msg type: %d\n", program, name, ifa->ifa_flags, msg->nlmsg_type);
+	printf("%s: Interface %s, flags: %x, msg type: %d\n", program, name[ifi->ifi_index], ifa->ifa_flags, msg->nlmsg_type);
 #endif
 
 	switch (msg->nlmsg_type) {
@@ -270,7 +275,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 					next->next->next = NULL;
 
 					/* display notification */
-					notifystr = newstr_addr(TEXT_NEWADDR, name,
+					notifystr = newstr_addr(TEXT_NEWADDR, name[ifi->ifi_index],
 						ifa->ifa_family, buf, ifa->ifa_prefixlen);
 
 					/* we are done, no need to run more loops */
@@ -311,7 +316,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 		case RTM_DELROUTE:
 			return 0;
 		case RTM_NEWLINK:
-			notifystr = newstr_link(TEXT_NEWLINK, name, ifi->ifi_flags);
+			notifystr = newstr_link(TEXT_NEWLINK, name[ifi->ifi_index], ifi->ifi_flags);
 			
 			/* free only if interface goes down */
 			if (!(ifi->ifi_flags & CHECK_CONNECTED))
@@ -319,9 +324,10 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 
 			break;
 		case RTM_DELLINK:
-			notifystr = newstr_away(TEXT_DELLINK);
+			notifystr = newstr_away(TEXT_DELLINK, name[ifi->ifi_index]);
 
 			free_chain(&addresses_seen[ifi->ifi_index]);
+			free(name[ifi->ifi_index]);
 
 			break;
 		default:
