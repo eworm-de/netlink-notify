@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <linux/if.h>
 #include <linux/netlink.h>
@@ -78,6 +79,25 @@ void free_chain(struct addresses_seen *addresses_seen) {
 	}
 }
 
+/*** init_address ***/
+void init_address(struct addresses_seen *next) {
+	next->address = NULL;
+	next->prefix = 0;
+	next->next = NULL;
+}
+
+/*** add_address ***/
+void add_address(struct addresses_seen *next, char *address, unsigned char prefix) {
+	while (next->next != NULL) {
+		/* just find the last one */
+		next = next->next;
+	}
+	next->address = address;
+	next->prefix = prefix;
+	next->next = malloc(sizeof(struct addresses_seen));
+	init_address(next->next);
+}
+
 /*** remove_address ***/
 void remove_address(struct addresses_seen *next, char *address, unsigned char prefix) {
 	while (next->next != NULL) {
@@ -89,6 +109,22 @@ void remove_address(struct addresses_seen *next, char *address, unsigned char pr
 		}
 		next = next->next;
 	}
+}
+
+/*** match_address ***/
+int match_address(struct addresses_seen *next, char *address, unsigned char prefix) {
+	while (next->next != NULL) {
+		if (next->address != NULL /* next->address can be NULL if it has been removed from interface */ &&
+				strcmp(next->address, address) == 0 && next->prefix == prefix) {
+#if DEBUG
+			printf("%s: Matched address: %s/%d\n", program, address, prefix);
+#endif
+			return 1;
+		}
+		next = next->next;
+	}
+
+	return 0;
 }
 
 /*** newstr_link ***/
@@ -201,8 +237,6 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	struct rtattr *rth;
 	int rtl;
 	char buf[64];
-	struct addresses_seen *next;
-	unsigned char seen;
 	NotifyNotification *address = NULL;
 
 	ifa = (struct ifaddrmsg *) NLMSG_DATA (msg);
@@ -216,9 +250,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 		do {
 			maxinterface++; /* there is no interface with index 0, so this is safe */
 			notification[maxinterface] = NULL;
-			addresses_seen[maxinterface].address = NULL;
-			addresses_seen[maxinterface].prefix = 0;
-			addresses_seen[maxinterface].next = NULL;
+			init_address(&addresses_seen[maxinterface]);
 			name[maxinterface] = NULL;
 		} while (maxinterface < ifi->ifi_index);
 	}
@@ -247,32 +279,12 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 						&& ifa->ifa_scope == RT_SCOPE_UNIVERSE /* no IPv6 scope link */) {
 					inet_ntop(ifa->ifa_family, RTA_DATA (rth), buf, sizeof(buf));
 
-					next = &(addresses_seen[ifi->ifi_index]);
-					seen = 0;
-
 					/* check if we already notified about this address */
-					while (next->next != NULL) {
-						if (next->address != NULL /* next->address can be NULL if it has been removed from interface */ &&
-								strcmp(next->address, buf) == 0 && next->prefix == ifa->ifa_prefixlen) {
-#if DEBUG
-							printf("%s: Already notified about address %s/%d, skipping.\n", program, buf, ifa->ifa_prefixlen);
-#endif
-							seen++;
-							break;
-						}
-						next = next->next;
-					}
-
-					if (seen)
+					if (match_address(&addresses_seen[ifi->ifi_index], buf, ifa->ifa_prefixlen))
 						break;
 
 					/* add address to struct */
-					next->address = strdup(buf);
-					next->prefix = ifa->ifa_prefixlen;
-					next->next = malloc(sizeof(struct addresses_seen));
-					next->next->address = NULL;
-					next->next->prefix = 0;
-					next->next->next = NULL;
+					add_address(&addresses_seen[ifi->ifi_index], strdup(buf), ifa->ifa_prefixlen);
 
 					/* display notification */
 					notifystr = newstr_addr(TEXT_NEWADDR, name[ifi->ifi_index],
