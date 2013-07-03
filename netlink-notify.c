@@ -56,17 +56,27 @@ NotifyNotification ** notification = NULL;
 struct addresses_seen *addresses_seen = NULL;
 
 /*** free_chain ***/
-void free_chain(struct addresses_seen *first) {
-	struct addresses_seen *addresses_seen = first->next;
+void free_chain(struct addresses_seen *addresses_seen) {
+	struct addresses_seen *next;
 
-	while (addresses_seen != NULL) {
-		struct addresses_seen *next = addresses_seen->next;
+	/* first struct is allocated by array, do not free */
+	if (addresses_seen->address != NULL)
 		free(addresses_seen->address);
+	addresses_seen->address = NULL;
+	addresses_seen->prefix = 0;
+
+	next = addresses_seen->next;
+	addresses_seen->next = NULL;
+	addresses_seen = next;
+
+	/* free everything else */
+	while (addresses_seen != NULL) {
+		next = addresses_seen->next;
+		if (addresses_seen->address != NULL)
+			free(addresses_seen->address);
 		free(addresses_seen);
 		addresses_seen = next;
 	}
-
-	first->next = NULL;
 }
 
 /*** newstr_link ***/
@@ -196,12 +206,14 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 		do {
 			maxinterface++; /* there is no interface with index 0, so this is safe */
 			notification[maxinterface] = NULL;
+			addresses_seen[maxinterface].address = NULL;
+			addresses_seen[maxinterface].prefix = 0;
 			addresses_seen[maxinterface].next = NULL;
 		} while (maxinterface < ifi->ifi_index);
 	}
 
 #if DEBUG
-					printf("%s: Interface %s, flags: %x, msg type: %d\n", program, name, ifa->ifa_flags, msg->nlmsg_type);
+	printf("%s: Interface %s, flags: %x, msg type: %d\n", program, name, ifa->ifa_flags, msg->nlmsg_type);
 #endif
 
 	switch (msg->nlmsg_type) {
@@ -238,6 +250,8 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 					next->address = strdup(buf);
 					next->prefix = ifa->ifa_prefixlen;
 					next->next = malloc(sizeof(struct addresses_seen));
+					next->next->address = NULL;
+					next->next->prefix = 0;
 					next->next->next = NULL;
 
 					/* display notification */
@@ -267,12 +281,17 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			return 0;
 		case RTM_NEWLINK:
 			notifystr = newstr_link(TEXT_NEWLINK, name, ifi->ifi_flags);
+			
+			/* free only if interface goes down */
 			if (!(ifi->ifi_flags & CHECK_CONNECTED))
-				free_chain(&(addresses_seen[ifi->ifi_index]));
+				free_chain(&addresses_seen[ifi->ifi_index]);
+
 			break;
 		case RTM_DELLINK:
 			notifystr = newstr_away(TEXT_DELLINK);
-			free_chain(&(addresses_seen[ifi->ifi_index]));
+
+			free_chain(&addresses_seen[ifi->ifi_index]);
+
 			break;
 		default:
 			/* we should not get here... */
