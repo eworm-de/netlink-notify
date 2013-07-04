@@ -272,7 +272,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 		case RTM_NEWADDR:
 			rth = IFA_RTA (ifa);
 			rtl = IFA_PAYLOAD (msg);
-		
+
 			while (rtl && RTA_OK (rth, rtl)) {
 				if ((rth->rta_type == IFA_LOCAL /* IPv4 */
 						|| rth->rta_type == IFA_ADDRESS /* IPv6 */)
@@ -308,7 +308,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 		case RTM_DELADDR:
 			rth = IFA_RTA (ifa);
 			rtl = IFA_PAYLOAD (msg);
-		
+
 			while (rtl && RTA_OK (rth, rtl)) {
 				if ((rth->rta_type == IFA_LOCAL /* IPv4 */
 						|| rth->rta_type == IFA_ADDRESS /* IPv6 */)
@@ -329,7 +329,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			return 0;
 		case RTM_NEWLINK:
 			notifystr = newstr_link(TEXT_NEWLINK, name[ifi->ifi_index], ifi->ifi_flags);
-			
+
 			/* free only if interface goes down */
 			if (!(ifi->ifi_flags & CHECK_CONNECTED))
 				free_chain(&addresses_seen[ifi->ifi_index]);
@@ -403,7 +403,7 @@ int main (int argc, char **argv) {
 	printf ("%s: %s v%s (compiled: " __DATE__ ", " __TIME__
 #if DEBUG
 			", with debug output"
-#endif			
+#endif
 			")\n", argv[0], PROGNAME, VERSION);
 
 	nls = open_netlink ();
