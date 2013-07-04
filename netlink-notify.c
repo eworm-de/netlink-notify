@@ -17,6 +17,10 @@
 #include <linux/if.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+/* we have to undefine this before including net/if.h to
+ * notget redefined structs, etc. */
+#undef __USE_MISC
+#include <net/if.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 

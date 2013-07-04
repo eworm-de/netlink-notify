@@ -1,7 +1,7 @@
 # netlink-notify - Notify about netlink changes
 
 CC	:= gcc
-CFLAGS	+= -O2 -Wall
+CFLAGS	+= -O2 -Wall -Werror
 CFLAGS	+= $(shell pkg-config --cflags --libs libnotify)
 VERSION	= $(shell git describe --tags --long)
 
