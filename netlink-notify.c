@@ -303,11 +303,6 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 				return 0;
 			}
 
-			address = notify_notification_new(TEXT_TOPIC, notifystr, ICON_NETWORK_ADDRESS);
-			notify_notification_set_category(address, PROGNAME);
-			notify_notification_set_urgency(address, NOTIFY_URGENCY_NORMAL);
-			notify_notification_set_timeout(address, NOTIFICATION_TIMEOUT);
-
 			break;
 		case RTM_DELADDR:
 			rth = IFA_RTA (ifa);
@@ -359,7 +354,12 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	if (address == NULL) {
 		if (notification[ifi->ifi_index] == NULL) {
 			notification[ifi->ifi_index] = notify_notification_new(TEXT_TOPIC, notifystr,
-				(ifi->ifi_flags & CHECK_CONNECTED ? ICON_NETWORK_CONNECTED : ICON_NETWORK_DISCONNECTED));
+				(ifi->ifi_flags & CHECK_CONNECTED ? ICON_NETWORK_CONNECTED : ICON_NETWORK_DISCONNECTED)
+#if NOTIFY_CHECK_VERSION(0, 7, 0)
+				);
+#else
+				, NULL);
+#endif
 			notify_notification_set_category(notification[ifi->ifi_index], PROGNAME);
 			notify_notification_set_urgency(notification[ifi->ifi_index], NOTIFY_URGENCY_NORMAL);
 		} else
