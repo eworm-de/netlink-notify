@@ -37,8 +37,8 @@
 #endif
 
 #define ICON_NETWORK_ADDRESS		"netlink-notify-address"
-#define ICON_NETWORK_CONNECTED		"netlink-notify-connected"
-#define ICON_NETWORK_DISCONNECTED	"netlink-notify-disconnected"
+#define ICON_NETWORK_CONNECTED		"netlink-notify-up"
+#define ICON_NETWORK_DISCONNECTED	"netlink-notify-down"
 
 #define TEXT_TOPIC	"Netlink Notification"
 #define TEXT_NEWLINK	"Interface <b>%s</b> is <b>%s</b>."

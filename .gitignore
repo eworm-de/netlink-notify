@@ -1,3 +1,4 @@
 *~
 *.o
+*.png
 netlink-notify
