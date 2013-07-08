@@ -19,14 +19,14 @@ icons:
 	$(CONVERT) netlink-notify-address.png netlink-notify-address.svg
 
 install:
-	$(INSTALL) -D -m0755 netlink-notify /usr/bin/netlink-notify
-	$(INSTALL) -D -m0644 netlink-notify.desktop /etc/xdg/autostart/netlink-notify.desktop
-	$(INSTALL) -D -m0755 netlink-notify-up.svg /usr/share/icons/hicolor/scalable/status/netlink-notify-up.svg
-	$(INSTALL) -D -m0755 netlink-notify-down.svg /usr/share/icons/hicolor/scalable/status/netlink-notify-down.svg
-	$(INSTALL) -D -m0755 netlink-notify-address.svg /usr/share/icons/hicolor/scalable/status/netlink-notify-address.svg
-	$(INSTALL) -D -m0755 netlink-notify-up.png /usr/share/icons/hicolor/48x48/status/netlink-notify-up.png
-	$(INSTALL) -D -m0755 netlink-notify-down.png /usr/share/icons/hicolor/48x48/status/netlink-notify-down.png
-	$(INSTALL) -D -m0755 netlink-notify-address.png /usr/share/icons/hicolor/48x48/status/netlink-notify-address.png
+	$(INSTALL) -D -m0755 netlink-notify $(DESTDIR)/usr/bin/netlink-notify
+	$(INSTALL) -D -m0644 netlink-notify.desktop $(DESTDIR)/etc/xdg/autostart/netlink-notify.desktop
+	$(INSTALL) -D -m0755 netlink-notify-up.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-up.svg
+	$(INSTALL) -D -m0755 netlink-notify-down.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-down.svg
+	$(INSTALL) -D -m0755 netlink-notify-address.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-address.svg
+	$(INSTALL) -D -m0755 netlink-notify-up.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-up.png
+	$(INSTALL) -D -m0755 netlink-notify-down.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-down.png
+	$(INSTALL) -D -m0755 netlink-notify-address.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-address.png
 
 clean:
 	/bin/rm -f *.o *.png *~ netlink-notify
