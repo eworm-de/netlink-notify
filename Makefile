@@ -17,6 +17,7 @@ icons:
 	$(CONVERT) netlink-notify-up.png netlink-notify-up.svg
 	$(CONVERT) netlink-notify-down.png netlink-notify-down.svg
 	$(CONVERT) netlink-notify-address.png netlink-notify-address.svg
+	$(CONVERT) netlink-notify-away.png netlink-notify-away.svg
 
 install:
 	$(INSTALL) -D -m0755 netlink-notify $(DESTDIR)/usr/bin/netlink-notify
@@ -24,9 +25,11 @@ install:
 	$(INSTALL) -D -m0755 netlink-notify-up.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-up.svg
 	$(INSTALL) -D -m0755 netlink-notify-down.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-down.svg
 	$(INSTALL) -D -m0755 netlink-notify-address.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-address.svg
+	$(INSTALL) -D -m0755 netlink-notify-away.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-away.svg
 	$(INSTALL) -D -m0755 netlink-notify-up.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-up.png
 	$(INSTALL) -D -m0755 netlink-notify-down.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-down.png
 	$(INSTALL) -D -m0755 netlink-notify-address.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-address.png
+	$(INSTALL) -D -m0755 netlink-notify-away.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-away.png
 
 clean:
 	/bin/rm -f *.o *.png *~ netlink-notify

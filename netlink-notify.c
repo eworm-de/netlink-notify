@@ -39,6 +39,7 @@
 #define ICON_NETWORK_ADDRESS	"netlink-notify-address"
 #define ICON_NETWORK_UP		"netlink-notify-up"
 #define ICON_NETWORK_DOWN	"netlink-notify-down"
+#define ICON_NETWORK_AWAY	"netlink-notify-away"
 
 #define TEXT_TOPIC	"Netlink Notification"
 #define TEXT_NEWLINK	"Interface <b>%s</b> is <b>%s</b>."
@@ -351,7 +352,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 		case RTM_DELLINK:
 			notifystr = newstr_away(TEXT_DELLINK, name[ifi->ifi_index]);
 
-			icon = ICON_NETWORK_DOWN;
+			icon = ICON_NETWORK_AWAY;
 
 			free_chain(&addresses_seen[ifi->ifi_index]);
 			free(name[ifi->ifi_index]);
