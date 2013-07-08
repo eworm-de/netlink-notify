@@ -3,6 +3,7 @@
 CC	:= gcc
 CONVERT	:= inkscape --export-png
 INSTALL	:= install
+RM	:= rm
 CFLAGS	+= -O2 -Wall -Werror
 CFLAGS	+= $(shell pkg-config --cflags --libs libnotify)
 VERSION	= $(shell git describe --tags --long)
@@ -32,4 +33,4 @@ install:
 	$(INSTALL) -D -m0755 netlink-notify-away.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-away.png
 
 clean:
-	/bin/rm -f *.o *.png *~ netlink-notify
+	$(RM) -f *.o *.png *~ netlink-notify
