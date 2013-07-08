@@ -36,9 +36,9 @@
 #define DEBUG	0
 #endif
 
-#define ICON_NETWORK_ADDRESS		"netlink-notify-address"
-#define ICON_NETWORK_CONNECTED		"netlink-notify-up"
-#define ICON_NETWORK_DISCONNECTED	"netlink-notify-down"
+#define ICON_NETWORK_ADDRESS	"netlink-notify-address"
+#define ICON_NETWORK_UP		"netlink-notify-up"
+#define ICON_NETWORK_DOWN	"netlink-notify-down"
 
 #define TEXT_TOPIC	"Netlink Notification"
 #define TEXT_NEWLINK	"Interface <b>%s</b> is <b>%s</b>."
@@ -242,6 +242,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	int rtl;
 	char buf[64];
 	NotifyNotification *address = NULL;
+	char *icon = NULL;
 
 	ifa = (struct ifaddrmsg *) NLMSG_DATA (msg);
 	ifi = (struct ifinfomsg *) NLMSG_DATA (msg);
@@ -253,7 +254,16 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 		name = realloc(name, (ifi->ifi_index + 1) * sizeof(size_t));
 		do {
 			maxinterface++; /* there is no interface with index 0, so this is safe */
-			notification[maxinterface] = NULL;
+
+			notification[maxinterface] =
+#if NOTIFY_CHECK_VERSION(0, 7, 0)
+				notify_notification_new(TEXT_TOPIC, NULL, NULL);
+#else
+				notify_notification_new(TEXT_TOPIC, NULL, NULL, NULL);
+#endif
+			notify_notification_set_category(notification[maxinterface], PROGNAME);
+			notify_notification_set_urgency(notification[maxinterface], NOTIFY_URGENCY_NORMAL);
+
 			init_address(&addresses_seen[maxinterface]);
 			name[maxinterface] = NULL;
 		} while (maxinterface < ifi->ifi_index);
@@ -303,6 +313,8 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 				return 0;
 			}
 
+			icon = ICON_NETWORK_ADDRESS;
+
 			break;
 		case RTM_DELADDR:
 			rth = IFA_RTA (ifa);
@@ -329,6 +341,8 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 		case RTM_NEWLINK:
 			notifystr = newstr_link(TEXT_NEWLINK, name[ifi->ifi_index], ifi->ifi_flags);
 
+			icon = ifi->ifi_flags & CHECK_CONNECTED ? ICON_NETWORK_UP : ICON_NETWORK_DOWN;
+
 			/* free only if interface goes down */
 			if (!(ifi->ifi_flags & CHECK_CONNECTED))
 				free_chain(&addresses_seen[ifi->ifi_index]);
@@ -336,6 +350,8 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			break;
 		case RTM_DELLINK:
 			notifystr = newstr_away(TEXT_DELLINK, name[ifi->ifi_index]);
+
+			icon = ICON_NETWORK_DOWN;
 
 			free_chain(&addresses_seen[ifi->ifi_index]);
 			free(name[ifi->ifi_index]);
@@ -351,23 +367,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	printf("%s: %s\n", program, notifystr);
 #endif
 
-	if (address == NULL) {
-		if (notification[ifi->ifi_index] == NULL) {
-			notification[ifi->ifi_index] = notify_notification_new(TEXT_TOPIC, notifystr,
-				(ifi->ifi_flags & CHECK_CONNECTED ? ICON_NETWORK_CONNECTED : ICON_NETWORK_DISCONNECTED)
-#if NOTIFY_CHECK_VERSION(0, 7, 0)
-				);
-#else
-				, NULL);
-#endif
-			notify_notification_set_category(notification[ifi->ifi_index], PROGNAME);
-			notify_notification_set_urgency(notification[ifi->ifi_index], NOTIFY_URGENCY_NORMAL);
-		} else
-			notify_notification_update(notification[ifi->ifi_index], TEXT_TOPIC, notifystr,
-				(ifi->ifi_flags & CHECK_CONNECTED ? ICON_NETWORK_CONNECTED : ICON_NETWORK_DISCONNECTED));
-
-		notify_notification_set_timeout(notification[ifi->ifi_index], NOTIFICATION_TIMEOUT);
-	}
+	notify_notification_update(notification[ifi->ifi_index], TEXT_TOPIC, notifystr, icon);
 
 	while (!notify_notification_show (address ? address : notification[ifi->ifi_index], &error)) {
 		if (errcount > 1) {
