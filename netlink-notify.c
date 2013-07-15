@@ -133,7 +133,7 @@ int match_address(struct addresses_seen *next, char *address, unsigned char pref
 }
 
 /*** newstr_link ***/
-char * newstr_link(char *text, char *interface, unsigned int flags) {
+char * newstr_link(const char *text, char *interface, unsigned int flags) {
 	char *notifystr;
 
 	notifystr = malloc(strlen(text) + strlen(interface) + 4);
@@ -143,7 +143,7 @@ char * newstr_link(char *text, char *interface, unsigned int flags) {
 }
 
 /*** newstr_addr ***/
-char * newstr_addr(char *text, char *interface, unsigned char family, char *ipaddr, unsigned char prefix) {
+char * newstr_addr(const char *text, char *interface, unsigned char family, char *ipaddr, unsigned char prefix) {
 	char *notifystr;
 
 	notifystr = malloc(strlen(text) + strlen(interface) + strlen(ipaddr));
@@ -153,7 +153,7 @@ char * newstr_addr(char *text, char *interface, unsigned char family, char *ipad
 }
 
 /*** newstr_away ***/
-char * newstr_away(char *text, char *interface) {
+char * newstr_away(const char *text, char *interface) {
 	char *notifystr;
 
 	notifystr = malloc(strlen(text) + strlen(interface));
