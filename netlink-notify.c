@@ -56,7 +56,7 @@ struct addresses_seen {
 
 char *program;
 unsigned int maxinterface = 0;
-NotifyNotification ** notification = NULL;
+NotifyNotification ** notifications = NULL;
 struct addresses_seen *addresses_seen = NULL;
 char ** name = NULL;
 
@@ -242,7 +242,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	struct rtattr *rth;
 	int rtl;
 	char buf[64];
-	NotifyNotification *address = NULL;
+	NotifyNotification *address = NULL, *notification = NULL;
 	char *icon = NULL;
 
 	ifa = (struct ifaddrmsg *) NLMSG_DATA (msg);
@@ -250,25 +250,29 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 
 	/* make sure we have alloced memory for NotifyNotification and addresses_seen struct array */
 	if (maxinterface < ifi->ifi_index) {
-		notification = realloc(notification, (ifi->ifi_index + 1) * sizeof(size_t));
+		notifications = realloc(notifications, (ifi->ifi_index + 1) * sizeof(size_t));
 		addresses_seen = realloc(addresses_seen, (ifi->ifi_index + 1) * sizeof(struct addresses_seen));
 		name = realloc(name, (ifi->ifi_index + 1) * sizeof(size_t));
 		do {
 			maxinterface++; /* there is no interface with index 0, so this is safe */
 
-			notification[maxinterface] =
+			notifications[maxinterface] =
 #if NOTIFY_CHECK_VERSION(0, 7, 0)
 				notify_notification_new(TEXT_TOPIC, NULL, NULL);
 #else
 				notify_notification_new(TEXT_TOPIC, NULL, NULL, NULL);
 #endif
-			notify_notification_set_category(notification[maxinterface], PROGNAME);
-			notify_notification_set_urgency(notification[maxinterface], NOTIFY_URGENCY_NORMAL);
+			notify_notification_set_category(notifications[maxinterface], PROGNAME);
+			notify_notification_set_urgency(notifications[maxinterface], NOTIFY_URGENCY_NORMAL);
 
 			init_address(&addresses_seen[maxinterface]);
 			name[maxinterface] = NULL;
 		} while (maxinterface < ifi->ifi_index);
 	}
+
+	/* make notification point to the array element, will be overwritten 
+	 * later when needed for address notification */
+	notification = notifications[ifi->ifi_index];
 
 	/* get interface name and store it */
 	if (name[ifi->ifi_index] == NULL) {
@@ -313,6 +317,18 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			if (notifystr == NULL) {
 				return 0;
 			}
+
+			/* do we want new notification, not update the notification about link status */
+			address =
+#if NOTIFY_CHECK_VERSION(0, 7, 0)
+				notify_notification_new(TEXT_TOPIC, NULL, NULL);
+#else
+				notify_notification_new(TEXT_TOPIC, NULL, NULL, NULL);
+#endif
+			notify_notification_set_category(address, PROGNAME);
+			notify_notification_set_urgency(address, NOTIFY_URGENCY_NORMAL);
+
+			notification = address;
 
 			icon = ICON_NETWORK_ADDRESS;
 
@@ -368,9 +384,9 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	printf("%s: %s\n", program, notifystr);
 #endif
 
-	notify_notification_update(notification[ifi->ifi_index], TEXT_TOPIC, notifystr, icon);
+	notify_notification_update(notification, TEXT_TOPIC, notifystr, icon);
 
-	while (!notify_notification_show (address ? address : notification[ifi->ifi_index], &error)) {
+	while (!notify_notification_show (notification, &error)) {
 		if (errcount > 1) {
 			fprintf(stderr, "%s: Looks like we can not reconnect to notification daemon... Exiting.\n", program);
 			exit(EXIT_FAILURE);
