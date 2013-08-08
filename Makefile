@@ -15,10 +15,18 @@ netlink-notify: netlink-notify.c
 	$(CC) $(CFLAGS) -o netlink-notify netlink-notify.c \
 		-DVERSION="\"$(VERSION)\""
 
-icons:
+icons: netlink-notify-up.png netlink-notify-down.png netlink-notify-address.png netlink-notify-away.png
+
+netlink-notify-up.png: netlink-notify-up.svg
 	$(CONVERT) netlink-notify-up.svg netlink-notify-up.png
+
+netlink-notify-down.png: netlink-notify-down.svg
 	$(CONVERT) netlink-notify-down.svg netlink-notify-down.png
+
+netlink-notify-address.png: netlink-notify-address.svg
 	$(CONVERT) netlink-notify-address.svg netlink-notify-address.png
+
+netlink-notify-away.png: netlink-notify-away.svg
 	$(CONVERT) netlink-notify-away.svg netlink-notify-away.png
 
 README.html: README.md
