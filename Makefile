@@ -2,7 +2,7 @@
 
 CC	:= gcc
 MD	:= markdown
-CONVERT	:= inkscape --export-png
+CONVERT	:= convert -define png:compression-level=9 -background transparent
 INSTALL	:= install
 RM	:= rm
 CFLAGS	+= -O2 -Wall -Werror
@@ -16,10 +16,10 @@ netlink-notify: netlink-notify.c
 		-DVERSION="\"$(VERSION)\""
 
 icons:
-	$(CONVERT) netlink-notify-up.png netlink-notify-up.svg
-	$(CONVERT) netlink-notify-down.png netlink-notify-down.svg
-	$(CONVERT) netlink-notify-address.png netlink-notify-address.svg
-	$(CONVERT) netlink-notify-away.png netlink-notify-away.svg
+	$(CONVERT) netlink-notify-up.svg netlink-notify-up.png
+	$(CONVERT) netlink-notify-down.svg netlink-notify-down.png
+	$(CONVERT) netlink-notify-address.svg netlink-notify-address.png
+	$(CONVERT) netlink-notify-away.svg netlink-notify-away.png
 
 README.html: README.md
 	$(MD) README.md > README.html
