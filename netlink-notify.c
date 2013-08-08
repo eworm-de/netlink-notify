@@ -121,9 +121,9 @@ int match_address(struct addresses_seen *next, char *address, unsigned char pref
 	while (next->next != NULL) {
 		if (next->address != NULL /* next->address can be NULL if it has been removed from interface */ &&
 				strcmp(next->address, address) == 0 && next->prefix == prefix) {
-#if DEBUG
+#			if DEBUG
 			printf("%s: Matched address: %s/%d\n", program, address, prefix);
-#endif
+#			endif
 			return 1;
 		}
 		next = next->next;
@@ -257,11 +257,11 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			maxinterface++; /* there is no interface with index 0, so this is safe */
 
 			notifications[maxinterface] =
-#if NOTIFY_CHECK_VERSION(0, 7, 0)
+#				if NOTIFY_CHECK_VERSION(0, 7, 0)
 				notify_notification_new(TEXT_TOPIC, NULL, NULL);
-#else
+#				else
 				notify_notification_new(TEXT_TOPIC, NULL, NULL, NULL);
-#endif
+#				endif
 			notify_notification_set_category(notifications[maxinterface], PROGNAME);
 			notify_notification_set_urgency(notifications[maxinterface], NOTIFY_URGENCY_NORMAL);
 
@@ -281,9 +281,9 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	}
 	if_indextoname(ifi->ifi_index, name[ifi->ifi_index]);
 
-#if DEBUG
+#	if DEBUG
 	printf("%s: Interface %s, flags: %x, msg type: %d\n", program, name[ifi->ifi_index], ifa->ifa_flags, msg->nlmsg_type);
-#endif
+#	endif
 
 	switch (msg->nlmsg_type) {
 		/* just return for cases we want to ignore
@@ -320,11 +320,11 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 
 			/* do we want new notification, not update the notification about link status */
 			address =
-#if NOTIFY_CHECK_VERSION(0, 7, 0)
+#				if NOTIFY_CHECK_VERSION(0, 7, 0)
 				notify_notification_new(TEXT_TOPIC, NULL, NULL);
-#else
+#				else
 				notify_notification_new(TEXT_TOPIC, NULL, NULL, NULL);
-#endif
+#				endif
 			notify_notification_set_category(address, PROGNAME);
 			notify_notification_set_urgency(address, NOTIFY_URGENCY_NORMAL);
 
@@ -380,9 +380,9 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			return 0;
 	}
 
-#if DEBUG
+#	if DEBUG
 	printf("%s: %s\n", program, notifystr);
-#endif
+#	endif
 
 	notify_notification_update(notification, TEXT_TOPIC, notifystr, icon);
 
@@ -422,9 +422,9 @@ int main (int argc, char **argv) {
 
 	program = argv[0];
 	printf ("%s: %s v%s (compiled: " __DATE__ ", " __TIME__
-#if DEBUG
+#			if DEBUG
 			", with debug output"
-#endif
+#			endif
 			")\n", argv[0], PROGNAME, VERSION);
 
 	nls = open_netlink ();
