@@ -371,7 +371,8 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			icon = ICON_NETWORK_AWAY;
 
 			free_chain(&addresses_seen[ifi->ifi_index]);
-			free(name[ifi->ifi_index]);
+			/* do not free name[ifi->ifi_index] here ... Looks like some drivers send
+			 * RTM_NEWLINK (for a last link down) after the device has gone away... */
 
 			break;
 		default:
