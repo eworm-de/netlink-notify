@@ -54,11 +54,16 @@ struct addresses_seen {
 	struct addresses_seen *next;
 };
 
+struct ifnames {
+	char *name;
+	unsigned char deleted;
+};
+
 char *program;
 unsigned int maxinterface = 0;
 NotifyNotification ** notifications = NULL;
 struct addresses_seen *addresses_seen = NULL;
-char ** name = NULL;
+struct ifnames ** ifnames = NULL;
 
 /*** free_chain ***/
 void free_chain(struct addresses_seen *addresses_seen) {
@@ -242,7 +247,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	struct rtattr *rth;
 	int rtl;
 	char buf[64];
-	NotifyNotification *address = NULL, *notification = NULL;
+	NotifyNotification *tmp_notification = NULL, *notification = NULL;
 	char *icon = NULL;
 
 	ifa = (struct ifaddrmsg *) NLMSG_DATA (msg);
@@ -252,7 +257,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	if (maxinterface < ifi->ifi_index) {
 		notifications = realloc(notifications, (ifi->ifi_index + 1) * sizeof(size_t));
 		addresses_seen = realloc(addresses_seen, (ifi->ifi_index + 1) * sizeof(struct addresses_seen));
-		name = realloc(name, (ifi->ifi_index + 1) * sizeof(size_t));
+		ifnames = realloc(ifnames, (ifi->ifi_index + 1) * sizeof(size_t));
 		do {
 			maxinterface++; /* there is no interface with index 0, so this is safe */
 
@@ -266,8 +271,15 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			notify_notification_set_urgency(notifications[maxinterface], NOTIFY_URGENCY_NORMAL);
 
 			init_address(&addresses_seen[maxinterface]);
-			name[maxinterface] = NULL;
+			ifnames[maxinterface] = malloc(sizeof(struct ifnames));
+			ifnames[maxinterface]->name = NULL;
+			ifnames[maxinterface]->deleted = 0;
 		} while (maxinterface < ifi->ifi_index);
+	} else if (ifnames[ifi->ifi_index]->deleted == 1) {
+#		if DEBUG
+		printf("%s: Ignoring event for deleted interface %d.\n", program, ifi->ifi_index);
+#		endif
+		return 0;
 	}
 
 	/* make notification point to the array element, will be overwritten 
@@ -275,14 +287,15 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	notification = notifications[ifi->ifi_index];
 
 	/* get interface name and store it */
-	if (name[ifi->ifi_index] == NULL) {
-		name[ifi->ifi_index] = realloc(name[ifi->ifi_index], IFNAMSIZ * sizeof(char));
-		sprintf(name[ifi->ifi_index], "(unknown)");
+	if (ifnames[ifi->ifi_index]->name == NULL) {
+		ifnames[ifi->ifi_index]->name = realloc(ifnames[ifi->ifi_index]->name, IFNAMSIZ * sizeof(char));
+		sprintf(ifnames[ifi->ifi_index]->name, "(unknown)");
 	}
-	if_indextoname(ifi->ifi_index, name[ifi->ifi_index]);
+	if_indextoname(ifi->ifi_index, ifnames[ifi->ifi_index]->name);
 
 #	if DEBUG
-	printf("%s: Interface %s, flags: %x, msg type: %d\n", program, name[ifi->ifi_index], ifa->ifa_flags, msg->nlmsg_type);
+	printf("%s: Interface %s (%d), flags: %x, msg type: %d\n",
+			program, ifnames[ifi->ifi_index]->name, ifi->ifi_index, ifa->ifa_flags, msg->nlmsg_type);
 #	endif
 
 	switch (msg->nlmsg_type) {
@@ -306,7 +319,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 					add_address(&addresses_seen[ifi->ifi_index], strdup(buf), ifa->ifa_prefixlen);
 
 					/* display notification */
-					notifystr = newstr_addr(TEXT_NEWADDR, name[ifi->ifi_index],
+					notifystr = newstr_addr(TEXT_NEWADDR, ifnames[ifi->ifi_index]->name,
 						ifa->ifa_family, buf, ifa->ifa_prefixlen);
 
 					/* we are done, no need to run more loops */
@@ -319,16 +332,16 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			}
 
 			/* do we want new notification, not update the notification about link status */
-			address =
+			tmp_notification =
 #				if NOTIFY_CHECK_VERSION(0, 7, 0)
 				notify_notification_new(TEXT_TOPIC, NULL, NULL);
 #				else
 				notify_notification_new(TEXT_TOPIC, NULL, NULL, NULL);
 #				endif
-			notify_notification_set_category(address, PROGNAME);
-			notify_notification_set_urgency(address, NOTIFY_URGENCY_NORMAL);
+			notify_notification_set_category(tmp_notification, PROGNAME);
+			notify_notification_set_urgency(tmp_notification, NOTIFY_URGENCY_NORMAL);
 
-			notification = address;
+			notification = tmp_notification;
 
 			icon = ICON_NETWORK_ADDRESS;
 
@@ -356,7 +369,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 		case RTM_DELROUTE:
 			return 0;
 		case RTM_NEWLINK:
-			notifystr = newstr_link(TEXT_NEWLINK, name[ifi->ifi_index], ifi->ifi_flags);
+			notifystr = newstr_link(TEXT_NEWLINK, ifnames[ifi->ifi_index]->name, ifi->ifi_flags);
 
 			icon = ifi->ifi_flags & CHECK_CONNECTED ? ICON_NETWORK_UP : ICON_NETWORK_DOWN;
 
@@ -366,13 +379,15 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 
 			break;
 		case RTM_DELLINK:
-			notifystr = newstr_away(TEXT_DELLINK, name[ifi->ifi_index]);
+			notifystr = newstr_away(TEXT_DELLINK, ifnames[ifi->ifi_index]->name);
 
 			icon = ICON_NETWORK_AWAY;
 
 			free_chain(&addresses_seen[ifi->ifi_index]);
-			/* do not free name[ifi->ifi_index] here ... Looks like some drivers send
-			 * RTM_NEWLINK (for a last link down) after the device has gone away... */
+			free(ifnames[ifi->ifi_index]->name);
+			/* marking interface deleted makes events for this interface to be ignored */
+			ifnames[ifi->ifi_index]->deleted = 1;
+			tmp_notification = notification;
 
 			break;
 		default:
@@ -409,8 +424,8 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 		}
 	}
 
-	if (address)
-		g_object_unref(G_OBJECT(address));
+	if (tmp_notification)
+		g_object_unref(G_OBJECT(tmp_notification));
 	errcount = 0;
 	free(notifystr);
 
