@@ -34,7 +34,7 @@ README.html: README.md
 
 install: install-bin install-doc
 
-install-bin:
+install-bin: netlink-notify icons
 	$(INSTALL) -D -m0755 netlink-notify $(DESTDIR)/usr/bin/netlink-notify
 	$(INSTALL) -D -m0644 netlink-notify.desktop $(DESTDIR)/etc/xdg/autostart/netlink-notify.desktop
 	$(INSTALL) -D -m0755 netlink-notify-up.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-up.svg
@@ -46,7 +46,7 @@ install-bin:
 	$(INSTALL) -D -m0755 netlink-notify-address.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-address.png
 	$(INSTALL) -D -m0755 netlink-notify-away.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-away.png
 
-install-doc:
+install-doc: README.html
 	$(INSTALL) -D -m0644 README.md $(DESTDIR)/usr/share/doc/netlink-notify/README.md
 	$(INSTALL) -D -m0644 README.html $(DESTDIR)/usr/share/doc/netlink-notify/README.html
 	$(INSTALL) -D -m0644 screenshot-away.png $(DESTDIR)/usr/share/doc/netlink-notify/screenshot-away.png
