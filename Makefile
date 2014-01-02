@@ -63,3 +63,7 @@ install-doc: README.html
 
 clean:
 	$(RM) -f *.o *~ netlink-notify-*.png README.html netlink-notify version.h
+
+release:
+	git archive --format=tar.xz --prefix=netlink-notify-$(VERSION)/ $(VERSION) > netlink-notify-$(VERSION).tar.xz
+	gpg -ab netlink-notify-$(VERSION).tar.xz
