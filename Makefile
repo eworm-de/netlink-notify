@@ -7,18 +7,19 @@ INSTALL	:= install
 RM	:= rm
 CFLAGS	+= -O2 -Wall -Werror
 CFLAGS	+= $(shell pkg-config --cflags --libs libnotify)
-VERSION := $(shell git describe --tags --long 2>/dev/null)
 # this is just a fallback in case you do not use git but downloaded
 # a release tarball...
-ifeq ($(VERSION),)
 VERSION := 0.6.3
-endif
 
 all: netlink-notify icons README.html
 
-netlink-notify: netlink-notify.c
-	$(CC) $(CFLAGS) -o netlink-notify netlink-notify.c \
-		-DVERSION="\"$(VERSION)\""
+netlink-notify: netlink-notify.c version.h
+	$(CC) $(CFLAGS) -o netlink-notify netlink-notify.c
+
+version.h: $(wildcard .git/HEAD .git/index .git/refs/tags/*) Makefile
+	echo "#ifndef VERSION" > $@
+	echo "#define VERSION \"$(shell git describe --tags --long 2>/dev/null || echo ${VERSION})\"" >> $@
+	echo "#endif" >> $@
 
 icons: netlink-notify-up.png netlink-notify-down.png netlink-notify-address.png netlink-notify-away.png
 
@@ -61,4 +62,4 @@ install-doc: README.html
 	$(INSTALL) -D -m0644 screenshot-up.png $(DESTDIR)/usr/share/doc/netlink-notify/screenshot-up.png
 
 clean:
-	$(RM) -f *.o *~ netlink-notify-*.png README.html netlink-notify
+	$(RM) -f *.o *~ netlink-notify-*.png README.html netlink-notify version.h

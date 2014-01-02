@@ -26,6 +26,8 @@
 
 #include <libnotify/notify.h>
 
+#include "version.h"
+
 #define PROGNAME	"netlink-notify"
 
 #define MYPROTO NETLINK_ROUTE
