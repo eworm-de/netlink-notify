@@ -1,6 +1,5 @@
 *~
 *.o
-netlink-notify-*.png
 netlink-notify
 README.html
 version.h
