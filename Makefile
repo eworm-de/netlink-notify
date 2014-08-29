@@ -9,7 +9,7 @@ CFLAGS	+= -O2 -Wall -Werror
 CFLAGS	+= $(shell pkg-config --cflags --libs libnotify)
 # this is just a fallback in case you do not use git but downloaded
 # a release tarball...
-VERSION := 0.6.4
+VERSION := 0.6.5
 
 all: netlink-notify icons README.html
 
