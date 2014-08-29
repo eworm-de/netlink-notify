@@ -6,6 +6,7 @@
  */
 
 #include <asm/types.h>
+#include <getopt.h>
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
@@ -34,9 +35,6 @@
 #define MYMGRP RTMGRP_IPV4_ROUTE
 
 #define NOTIFICATION_TIMEOUT	10000
-#ifndef DEBUG
-#define DEBUG	0
-#endif
 
 #define ICON_NETWORK_ADDRESS	"netlink-notify-address"
 #define ICON_NETWORK_UP		"netlink-notify-up"
@@ -49,6 +47,14 @@
 #define TEXT_DELLINK	"Interface <b>%s</b> has gone away."
 
 #define CHECK_CONNECTED	IFF_LOWER_UP
+
+const static char optstring[] = "hv";
+const static struct option options_long[] = {
+	/* name		has_arg		flag	val */
+	{ "help",	no_argument,	NULL,	'h' },
+	{ "verbose",	no_argument,	NULL,	'v' },
+	{ 0, 0, 0, 0 }
+};
 
 struct addresses_seen {
 	char *address;
@@ -66,6 +72,7 @@ struct ifs {
 char *program;
 unsigned int maxinterface = 0;
 struct ifs ** ifs = NULL;
+uint8_t verbose = 0;
 
 /*** free_addresses ***/
 void free_addresses(struct addresses_seen *addresses_seen) {
@@ -148,7 +155,6 @@ int match_address(struct addresses_seen *addresses_seen, char *address, unsigned
 	return 0;
 }
 
-#if DEBUG
 /*** list_addresses ***/
 void list_addresses(struct addresses_seen *addresses_seen, char *interface) {
 	printf("%s: Addresses seen for interface %s:", program, interface);
@@ -158,7 +164,6 @@ void list_addresses(struct addresses_seen *addresses_seen, char *interface) {
 	}
 	putchar('\n');
 }
-#endif
 
 /*** newstr_link ***/
 char * newstr_link(const char *text, char *interface, unsigned int flags) {
@@ -282,9 +287,8 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 		while(maxinterface < ifi->ifi_index) {
 			maxinterface++;
 
-#			if DEBUG
-			printf("%s: Initializing interface %d.\n", program, maxinterface);
-#			endif
+			if (verbose > 0)
+				printf("%s: Initializing interface %d.\n", program, maxinterface);
 
 			ifs[maxinterface] = malloc(sizeof(struct ifs));
 
@@ -303,13 +307,12 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			ifs[maxinterface]->addresses_seen = NULL;
 		}
 	} else if (ifs[ifi->ifi_index]->deleted == 1) {
-#		if DEBUG
-		printf("%s: Ignoring event for deleted interface %d.\n", program, ifi->ifi_index);
-#		endif
+		if (verbose > 0)
+			printf("%s: Ignoring event for deleted interface %d.\n", program, ifi->ifi_index);
 		return 0;
 	}
 
-	/* make notification point to the array element, will be overwritten 
+	/* make notification point to the array element, will be overwritten
 	 * later when needed for address notification */
 	notification = ifs[ifi->ifi_index]->notification;
 
@@ -320,10 +323,9 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	}
 	if_indextoname(ifi->ifi_index, ifs[ifi->ifi_index]->name);
 
-#	if DEBUG
-	printf("%s: Event for interface %s (%d): flags = %x, msg type = %d\n",
+	if (verbose > 1)
+		printf("%s: Event for interface %s (%d): flags = %x, msg type = %d\n",
 			program, ifs[ifi->ifi_index]->name, ifi->ifi_index, ifa->ifa_flags, msg->nlmsg_type);
-#	endif
 
 	switch (msg->nlmsg_type) {
 		/* just return for cases we want to ignore
@@ -340,18 +342,16 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 
 					/* check if we already notified about this address */
 					if (match_address(ifs[ifi->ifi_index]->addresses_seen, buf, ifa->ifa_prefixlen)) {
-#						if DEBUG
-						printf("%s: Address %s/%d already known for %s, ignoring.\n", program, buf, ifa->ifa_prefixlen, ifs[ifi->ifi_index]->name);
-#						endif
+						if (verbose > 0)
+							printf("%s: Address %s/%d already known for %s, ignoring.\n", program, buf, ifa->ifa_prefixlen, ifs[ifi->ifi_index]->name);
 						break;
 					}
 
 					/* add address to struct */
 					ifs[ifi->ifi_index]->addresses_seen =
 						add_address(ifs[ifi->ifi_index]->addresses_seen, strdup(buf), ifa->ifa_prefixlen);
-#					if DEBUG
-					list_addresses(ifs[ifi->ifi_index]->addresses_seen, ifs[ifi->ifi_index]->name);
-#					endif
+					if (verbose > 1)
+						list_addresses(ifs[ifi->ifi_index]->addresses_seen, ifs[ifi->ifi_index]->name);
 
 					/* display notification */
 					notifystr = newstr_addr(TEXT_NEWADDR, ifs[ifi->ifi_index]->name,
@@ -392,9 +392,8 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 					inet_ntop(ifa->ifa_family, RTA_DATA (rth), buf, sizeof(buf));
 					ifs[ifi->ifi_index]->addresses_seen =
 						remove_address(ifs[ifi->ifi_index]->addresses_seen, buf, ifa->ifa_prefixlen);
-#					if DEBUG
-					list_addresses(ifs[ifi->ifi_index]->addresses_seen, ifs[ifi->ifi_index]->name);
-#					endif
+					if (verbose > 1)
+						list_addresses(ifs[ifi->ifi_index]->addresses_seen, ifs[ifi->ifi_index]->name);
 
 					/* we are done, no need to run more loops */
 					break;
@@ -437,9 +436,8 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			return 0;
 	}
 
-#	if DEBUG
-	printf("%s: %s\n", program, notifystr);
-#	endif
+	if (verbose > 0)
+		printf("%s: %s\n", program, notifystr);
 
 	notify_notification_update(notification, TEXT_TOPIC, notifystr, icon);
 
@@ -475,14 +473,23 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 
 /*** main ***/
 int main (int argc, char **argv) {
-	int nls;
+	int i, nls;
 
 	program = argv[0];
-	printf ("%s: %s v%s (compiled: " __DATE__ ", " __TIME__
-#			if DEBUG
-			", with debug output"
-#			endif
-			")\n", argv[0], PROGNAME, VERSION);
+
+	/* get the verbose status */
+	while ((i = getopt_long(argc, argv, optstring, options_long, NULL)) != -1) {
+		switch (i) {
+			case 'h':
+				printf("usage: %s [-h] [-v[v]]\n", program);
+				return EXIT_SUCCESS;
+			case 'v':
+				verbose++;
+				break;
+		}
+	}
+
+	printf ("%s: %s v%s (compiled: " __DATE__ ", " __TIME__ ")\n", argv[0], PROGNAME, VERSION);
 
 	nls = open_netlink ();
 	if (nls < 0) {
