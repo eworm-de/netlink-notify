@@ -64,6 +64,7 @@ struct addresses_seen {
 
 struct ifs {
 	char *name;
+	int state;
 	unsigned char deleted;
 	struct addresses_seen *addresses_seen;
 	NotifyNotification *notification;
@@ -293,6 +294,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			ifs[maxinterface] = malloc(sizeof(struct ifs));
 
 			ifs[maxinterface]->name = NULL;
+			ifs[maxinterface]->state = -1;
 			ifs[maxinterface]->deleted = 0;
 
 			ifs[maxinterface]->notification =
@@ -407,6 +409,12 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 		case RTM_DELROUTE:
 			return 0;
 		case RTM_NEWLINK:
+			/* ignore if state did not change */
+			if ((ifi->ifi_flags & CHECK_CONNECTED) == ifs[ifi->ifi_index]->state)
+				return 0;
+
+			ifs[ifi->ifi_index]->state = ifi->ifi_flags & CHECK_CONNECTED;
+
 			notifystr = newstr_link(TEXT_NEWLINK, ifs[ifi->ifi_index]->name, ifi->ifi_flags);
 
 			icon = ifi->ifi_flags & CHECK_CONNECTED ? ICON_NETWORK_UP : ICON_NETWORK_DOWN;
