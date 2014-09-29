@@ -5,48 +5,8 @@
  * of the GNU General Public License, incorporated herein by reference.
  */
 
-#include <asm/types.h>
-#include <getopt.h>
-#include <unistd.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-#include <arpa/inet.h>
-#include <ifaddrs.h>
-#include <linux/if.h>
-#include <linux/netlink.h>
-#include <linux/rtnetlink.h>
-/* we have to undefine this before including net/if.h to
- * notget redefined structs, etc. */
-#undef __USE_MISC
-#include <net/if.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-
-#include <libnotify/notify.h>
-
-#include "version.h"
-
-#define PROGNAME	"netlink-notify"
-
-#define MYPROTO NETLINK_ROUTE
-#define MYMGRP RTMGRP_IPV4_ROUTE
-
-#define NOTIFICATION_TIMEOUT	10000
-
-#define ICON_NETWORK_ADDRESS	"netlink-notify-address"
-#define ICON_NETWORK_UP		"netlink-notify-up"
-#define ICON_NETWORK_DOWN	"netlink-notify-down"
-#define ICON_NETWORK_AWAY	"netlink-notify-away"
-
-#define TEXT_TOPIC	"Netlink Notification"
-#define TEXT_NEWLINK	"Interface <b>%s</b> is <b>%s</b>."
-#define TEXT_NEWADDR	"Interface <b>%s</b> has new %s address\n<b>%s</b>/%d."
-#define TEXT_DELLINK	"Interface <b>%s</b> has gone away."
-
-#define CHECK_CONNECTED	IFF_LOWER_UP
+#include "netlink-notify.h"
 
 const static char optstring[] = "hv";
 const static struct option options_long[] = {
@@ -56,24 +16,11 @@ const static struct option options_long[] = {
 	{ 0, 0, 0, 0 }
 };
 
-struct addresses_seen {
-	char *address;
-	unsigned char prefix;
-	struct addresses_seen *next;
-};
-
-struct ifs {
-	char *name;
-	int state;
-	unsigned char deleted;
-	struct addresses_seen *addresses_seen;
-	NotifyNotification *notification;
-};
-
 char *program;
 unsigned int maxinterface = 0;
-struct ifs ** ifs = NULL;
+struct ifs * ifs = NULL;
 uint8_t verbose = 0;
+uint8_t doexit = 0;
 
 /*** free_addresses ***/
 void free_addresses(struct addresses_seen *addresses_seen) {
@@ -82,20 +29,18 @@ void free_addresses(struct addresses_seen *addresses_seen) {
 	/* free everything else */
 	while (addresses_seen != NULL) {
 		next = addresses_seen->next;
-		if (addresses_seen->address != NULL)
-			free(addresses_seen->address);
 		free(addresses_seen);
 		addresses_seen = next;
 	}
 }
 
 /*** add_address ***/
-struct addresses_seen * add_address(struct addresses_seen *addresses_seen, char *address, unsigned char prefix) {
+struct addresses_seen * add_address(struct addresses_seen *addresses_seen, const char *address, unsigned char prefix) {
 	struct addresses_seen *first = addresses_seen;
 
 	if (addresses_seen == NULL) {
 		addresses_seen = malloc(sizeof(struct addresses_seen));
-		addresses_seen->address = address;
+		strcpy(addresses_seen->address, address);
 		addresses_seen->prefix = prefix;
 		addresses_seen->next = NULL;
 		return addresses_seen;
@@ -108,7 +53,7 @@ struct addresses_seen * add_address(struct addresses_seen *addresses_seen, char 
 
 	addresses_seen->next = malloc(sizeof(struct addresses_seen));
 	addresses_seen = addresses_seen->next;
-	addresses_seen->address = address;
+	strcpy(addresses_seen->address, address);
 	addresses_seen->prefix = prefix;
 	addresses_seen->next = NULL;
 
@@ -116,7 +61,7 @@ struct addresses_seen * add_address(struct addresses_seen *addresses_seen, char 
 }
 
 /*** remove_address ***/
-struct addresses_seen * remove_address(struct addresses_seen *addresses_seen, char *address, unsigned char prefix) {
+struct addresses_seen * remove_address(struct addresses_seen *addresses_seen, const char *address, unsigned char prefix) {
 	struct addresses_seen *first = addresses_seen, *last = NULL;
 
 	/* no addresses, just return NULL */
@@ -126,7 +71,6 @@ struct addresses_seen * remove_address(struct addresses_seen *addresses_seen, ch
 	/* first address matches, return new start */
 	if (strcmp(addresses_seen->address, address) == 0 && addresses_seen->prefix == prefix) {
 		first = addresses_seen->next;
-		free(addresses_seen->address);
 		free(addresses_seen);
 		return first;
 	}
@@ -134,7 +78,6 @@ struct addresses_seen * remove_address(struct addresses_seen *addresses_seen, ch
 	/* find the address and remove it */
 	while (addresses_seen != NULL) {
 		if (strcmp(addresses_seen->address, address) == 0 && addresses_seen->prefix == prefix) {
-			free(addresses_seen->address);
 			last->next = addresses_seen->next;
 			free(addresses_seen);
 			break;
@@ -146,7 +89,7 @@ struct addresses_seen * remove_address(struct addresses_seen *addresses_seen, ch
 }
 
 /*** match_address ***/
-int match_address(struct addresses_seen *addresses_seen, char *address, unsigned char prefix) {
+int match_address(struct addresses_seen *addresses_seen, const char *address, unsigned char prefix) {
 	while (addresses_seen != NULL) {
 		if (strcmp(addresses_seen->address, address) == 0 && addresses_seen->prefix == prefix) {
 			return 1;
@@ -198,41 +141,43 @@ char * newstr_away(const char *text, char *interface) {
 
 /*** open_netlink ***/
 int open_netlink (void) {
-	int sock = socket (AF_NETLINK, SOCK_RAW, MYPROTO);
+	int sock;
 	struct sockaddr_nl addr;
 
-	memset ((void *) &addr, 0, sizeof (addr));
+	memset ((void *) &addr, 0, sizeof(addr));
 
-	if (sock < 0)
+	if ((sock = socket (AF_NETLINK, SOCK_RAW, NETLINK_ROUTE)) < 0)
 		return sock;
+
 	addr.nl_family = AF_NETLINK;
-	addr.nl_pid = getpid ();
+	addr.nl_pid = getpid();
 	addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV6_IFADDR;
-	if (bind (sock, (struct sockaddr *) &addr, sizeof (addr)) < 0)
+
+	if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0)
 		return -1;
+
 	return sock;
 }
 
 /*** read_event ***/
-int read_event (int sockint, int (*msg_handler) (struct sockaddr_nl *, struct nlmsghdr *)) {
-	int status;
-	int ret = 0;
+int read_event (int sockint) {
+	int status, rc = EXIT_FAILURE;
 	char buf[4096];
 	struct iovec iov = { buf, sizeof buf };
 	struct sockaddr_nl snl;
 	struct msghdr msg = { (void *) &snl, sizeof snl, &iov, 1, NULL, 0, 0 };
 	struct nlmsghdr *h;
 
-	status = recvmsg (sockint, &msg, 0);
-
-	if (status < 0) {
+	if ((status = recvmsg (sockint, &msg, 0)) < 0) {
 		/* Socket non-blocking so bail out once we have read everything */
-		if (errno == EWOULDBLOCK || errno == EAGAIN)
-			return ret;
+		if (errno == EWOULDBLOCK || errno == EAGAIN || errno == EINTR) {
+			rc = EXIT_SUCCESS;
+			goto out;
+		}
 
 		/* Anything else is an error */
 		fprintf (stderr, "read_netlink: Error recvmsg: %d\n", status);
-		return status;
+		goto out;
 	}
 
 	if (status == 0)
@@ -241,33 +186,33 @@ int read_event (int sockint, int (*msg_handler) (struct sockaddr_nl *, struct nl
 	/* We need to handle more than one message per 'recvmsg' */
 	for (h = (struct nlmsghdr *) buf; NLMSG_OK (h, (unsigned int) status); h = NLMSG_NEXT (h, status)) {
 		/* Finish reading */
-		if (h->nlmsg_type == NLMSG_DONE)
-			return ret;
+		if (h->nlmsg_type == NLMSG_DONE) {
+			rc = EXIT_SUCCESS;
+			goto out;
+		}
 
 		/* Message is some kind of error */
 		if (h->nlmsg_type == NLMSG_ERROR) {
 			fprintf (stderr, "read_netlink: Message is an error - decode TBD\n");
-			return -1;
+			goto out;
 		}
 
 		/* Call message handler */
-		if (msg_handler) {
-			ret = (*msg_handler) (&snl, h);
-			if (ret < 0) {
-				fprintf (stderr, "read_netlink: Message hander error %d\n", ret);
-				return ret;
-			}
-		} else {
-			fprintf (stderr, "read_netlink: Error NULL message handler\n");
-			return -1;
+		if (msg_handler(&snl, h) != EXIT_SUCCESS) {
+			fprintf (stderr, "read_event: Message hander returned error.\n");
+			goto out;
 		}
 	}
 
-	return ret;
+	rc = EXIT_SUCCESS;
+
+out:
+	return rc;
 }
 
 /*** msg_handler ***/
-static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
+int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
+	int rc = EXIT_FAILURE;
 	char *notifystr = NULL;
 	unsigned int errcount = 0;
 	GError *error = NULL;
@@ -275,7 +220,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	struct ifinfomsg *ifi;
 	struct rtattr *rth;
 	int rtl;
-	char buf[64];
+	char buf[INET6_ADDRSTRLEN];
 	NotifyNotification *tmp_notification = NULL, *notification = NULL;
 	char *icon = NULL;
 
@@ -284,50 +229,46 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 
 	/* make sure we have alloced memory for NotifyNotification and addresses_seen struct array */
 	if (maxinterface < ifi->ifi_index) {
-		ifs = realloc(ifs, (ifi->ifi_index + 1) * sizeof(size_t));
+		ifs = realloc(ifs, (ifi->ifi_index + 1) * sizeof(struct ifs));
 		while(maxinterface < ifi->ifi_index) {
 			maxinterface++;
 
 			if (verbose > 0)
 				printf("%s: Initializing interface %d.\n", program, maxinterface);
 
-			ifs[maxinterface] = malloc(sizeof(struct ifs));
+			strcpy(ifs[maxinterface].name, "(unknown)");
+			ifs[maxinterface].state = -1;
+			ifs[maxinterface].deleted = 0;
 
-			ifs[maxinterface]->name = NULL;
-			ifs[maxinterface]->state = -1;
-			ifs[maxinterface]->deleted = 0;
-
-			ifs[maxinterface]->notification =
+			ifs[maxinterface].notification =
 #				if NOTIFY_CHECK_VERSION(0, 7, 0)
 				notify_notification_new(TEXT_TOPIC, NULL, NULL);
 #				else
 				notify_notification_new(TEXT_TOPIC, NULL, NULL, NULL);
 #				endif
-			notify_notification_set_category(ifs[maxinterface]->notification, PROGNAME);
-			notify_notification_set_urgency(ifs[maxinterface]->notification, NOTIFY_URGENCY_NORMAL);
+			notify_notification_set_category(ifs[maxinterface].notification, PROGNAME);
+			notify_notification_set_urgency(ifs[maxinterface].notification, NOTIFY_URGENCY_NORMAL);
 
-			ifs[maxinterface]->addresses_seen = NULL;
+			ifs[maxinterface].addresses_seen = NULL;
 		}
-	} else if (ifs[ifi->ifi_index]->deleted == 1) {
+	} else if (ifs[ifi->ifi_index].deleted == 1) {
 		if (verbose > 0)
 			printf("%s: Ignoring event for deleted interface %d.\n", program, ifi->ifi_index);
-		return 0;
+		rc = EXIT_SUCCESS;
+		goto out;
 	}
 
 	/* make notification point to the array element, will be overwritten
 	 * later when needed for address notification */
-	notification = ifs[ifi->ifi_index]->notification;
+	notification = ifs[ifi->ifi_index].notification;
 
-	/* get interface name and store it */
-	if (ifs[ifi->ifi_index]->name == NULL) {
-		ifs[ifi->ifi_index]->name = realloc(ifs[ifi->ifi_index]->name, IFNAMSIZ * sizeof(char));
-		sprintf(ifs[ifi->ifi_index]->name, "(unknown)");
-	}
-	if_indextoname(ifi->ifi_index, ifs[ifi->ifi_index]->name);
+	/* get interface name and store it
+	 * in case the interface does no longer exist this may fail, but it does not overwrite */
+	if_indextoname(ifi->ifi_index, ifs[ifi->ifi_index].name);
 
 	if (verbose > 1)
 		printf("%s: Event for interface %s (%d): flags = %x, msg type = %d\n",
-			program, ifs[ifi->ifi_index]->name, ifi->ifi_index, ifa->ifa_flags, msg->nlmsg_type);
+			program, ifs[ifi->ifi_index].name, ifi->ifi_index, ifa->ifa_flags, msg->nlmsg_type);
 
 	switch (msg->nlmsg_type) {
 		/* just return for cases we want to ignore
@@ -343,20 +284,21 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 					inet_ntop(ifa->ifa_family, RTA_DATA (rth), buf, sizeof(buf));
 
 					/* check if we already notified about this address */
-					if (match_address(ifs[ifi->ifi_index]->addresses_seen, buf, ifa->ifa_prefixlen)) {
+					if (match_address(ifs[ifi->ifi_index].addresses_seen, buf, ifa->ifa_prefixlen)) {
 						if (verbose > 0)
-							printf("%s: Address %s/%d already known for %s, ignoring.\n", program, buf, ifa->ifa_prefixlen, ifs[ifi->ifi_index]->name);
+							printf("%s: Address %s/%d already known for %s, ignoring.\n",
+									program, buf, ifa->ifa_prefixlen, ifs[ifi->ifi_index].name);
 						break;
 					}
 
 					/* add address to struct */
-					ifs[ifi->ifi_index]->addresses_seen =
-						add_address(ifs[ifi->ifi_index]->addresses_seen, strdup(buf), ifa->ifa_prefixlen);
+					ifs[ifi->ifi_index].addresses_seen =
+						add_address(ifs[ifi->ifi_index].addresses_seen, buf, ifa->ifa_prefixlen);
 					if (verbose > 1)
-						list_addresses(ifs[ifi->ifi_index]->addresses_seen, ifs[ifi->ifi_index]->name);
+						list_addresses(ifs[ifi->ifi_index].addresses_seen, ifs[ifi->ifi_index].name);
 
 					/* display notification */
-					notifystr = newstr_addr(TEXT_NEWADDR, ifs[ifi->ifi_index]->name,
+					notifystr = newstr_addr(TEXT_NEWADDR, ifs[ifi->ifi_index].name,
 						ifa->ifa_family, buf, ifa->ifa_prefixlen);
 
 					/* we are done, no need to run more loops */
@@ -364,8 +306,10 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 				}
 				rth = RTA_NEXT (rth, rtl);
 			}
+			/* we did not find anything to notify */
 			if (notifystr == NULL) {
-				return 0;
+				rc = EXIT_SUCCESS;
+				goto out;
 			}
 
 			/* do we want new notification, not update the notification about link status */
@@ -392,10 +336,10 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 						|| rth->rta_type == IFA_ADDRESS /* IPv6 */)
 						&& ifa->ifa_scope == RT_SCOPE_UNIVERSE /* no IPv6 scope link */) {
 					inet_ntop(ifa->ifa_family, RTA_DATA (rth), buf, sizeof(buf));
-					ifs[ifi->ifi_index]->addresses_seen =
-						remove_address(ifs[ifi->ifi_index]->addresses_seen, buf, ifa->ifa_prefixlen);
+					ifs[ifi->ifi_index].addresses_seen =
+						remove_address(ifs[ifi->ifi_index].addresses_seen, buf, ifa->ifa_prefixlen);
 					if (verbose > 1)
-						list_addresses(ifs[ifi->ifi_index]->addresses_seen, ifs[ifi->ifi_index]->name);
+						list_addresses(ifs[ifi->ifi_index].addresses_seen, ifs[ifi->ifi_index].name);
 
 					/* we are done, no need to run more loops */
 					break;
@@ -403,45 +347,52 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 				rth = RTA_NEXT (rth, rtl);
 			}
 
-			return 0;
+			rc = EXIT_SUCCESS;
+			goto out;
+
 		case RTM_NEWROUTE:
-			return 0;
+			rc = EXIT_SUCCESS;
+			goto out;
+
 		case RTM_DELROUTE:
-			return 0;
+			rc = EXIT_SUCCESS;
+			goto out;
+
 		case RTM_NEWLINK:
 			/* ignore if state did not change */
-			if ((ifi->ifi_flags & CHECK_CONNECTED) == ifs[ifi->ifi_index]->state)
-				return 0;
+			if ((ifi->ifi_flags & CHECK_CONNECTED) == ifs[ifi->ifi_index].state) {
+				rc = EXIT_SUCCESS;
+				goto out;
+			}
 
-			ifs[ifi->ifi_index]->state = ifi->ifi_flags & CHECK_CONNECTED;
+			ifs[ifi->ifi_index].state = ifi->ifi_flags & CHECK_CONNECTED;
 
-			notifystr = newstr_link(TEXT_NEWLINK, ifs[ifi->ifi_index]->name, ifi->ifi_flags);
+			notifystr = newstr_link(TEXT_NEWLINK, ifs[ifi->ifi_index].name, ifi->ifi_flags);
 
 			icon = ifi->ifi_flags & CHECK_CONNECTED ? ICON_NETWORK_UP : ICON_NETWORK_DOWN;
 
 			/* free only if interface goes down */
 			if (!(ifi->ifi_flags & CHECK_CONNECTED)) {
-				free_addresses(ifs[ifi->ifi_index]->addresses_seen);
-				ifs[ifi->ifi_index]->addresses_seen = NULL;
+				free_addresses(ifs[ifi->ifi_index].addresses_seen);
+				ifs[ifi->ifi_index].addresses_seen = NULL;
 			}
 
 			break;
 		case RTM_DELLINK:
-			notifystr = newstr_away(TEXT_DELLINK, ifs[ifi->ifi_index]->name);
+			notifystr = newstr_away(TEXT_DELLINK, ifs[ifi->ifi_index].name);
 
 			icon = ICON_NETWORK_AWAY;
 
-			free_addresses(ifs[ifi->ifi_index]->addresses_seen);
-			free(ifs[ifi->ifi_index]->name);
+			free_addresses(ifs[ifi->ifi_index].addresses_seen);
 			/* marking interface deleted makes events for this interface to be ignored */
-			ifs[ifi->ifi_index]->deleted = 1;
-			tmp_notification = notification;
+			ifs[ifi->ifi_index].deleted = 1;
 
 			break;
 		default:
 			/* we should not get here... */
 			fprintf(stderr, "msg_handler: Unknown netlink nlmsg_type %d.\n", msg->nlmsg_type);
-			return 0;
+
+			goto out;
 	}
 
 	if (verbose > 0)
@@ -452,7 +403,7 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	while (!notify_notification_show (notification, &error)) {
 		if (errcount > 1) {
 			fprintf(stderr, "%s: Looks like we can not reconnect to notification daemon... Exiting.\n", program);
-			exit(EXIT_FAILURE);
+			goto out;
 		} else {
 			g_printerr("%s: Error \"%s\" while trying to show notification. Trying to reconnect.\n", program, error->message);
 			errcount++;
@@ -466,21 +417,33 @@ static int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 
 			if (!notify_init (PROGNAME)) {
 				fprintf(stderr, "%s: Can't create notify.\n", program);
-				exit(EXIT_FAILURE);
+				goto out;
 			}
 		}
 	}
 
+	rc = EXIT_SUCCESS;
+
+out:
 	if (tmp_notification)
 		g_object_unref(G_OBJECT(tmp_notification));
 	errcount = 0;
 	free(notifystr);
 
-	return 0;
+	return rc;
+}
+
+/*** received_signal ***/
+void received_signal(int signal) {
+	if (verbose > 0)
+		printf("Received signal: %d\n", signal);
+
+	doexit++;
 }
 
 /*** main ***/
 int main (int argc, char **argv) {
+	int rc = EXIT_FAILURE;
 	int i, nls;
 
 	program = argv[0];
@@ -490,7 +453,8 @@ int main (int argc, char **argv) {
 		switch (i) {
 			case 'h':
 				printf("usage: %s [-h] [-v[v]]\n", program);
-				return EXIT_SUCCESS;
+				rc = EXIT_SUCCESS;
+				goto out40;
 			case 'v':
 				verbose++;
 				break;
@@ -499,19 +463,52 @@ int main (int argc, char **argv) {
 
 	printf ("%s: %s v%s (compiled: " __DATE__ ", " __TIME__ ")\n", argv[0], PROGNAME, VERSION);
 
-	nls = open_netlink ();
-	if (nls < 0) {
+	if ((nls = open_netlink()) < 0) {
 		fprintf (stderr, "%s: Error opening netlink socket!", argv[0]);
-		exit (EXIT_FAILURE);
+		goto out40;
 	}
 
 	if (!notify_init (PROGNAME)) {
 		fprintf (stderr, "%s: Can't create notify.\n", argv[0]);
-		exit (EXIT_FAILURE);
+		goto out30;
 	}
 
-	while (1)
-		read_event (nls, msg_handler);
+	signal(SIGINT, received_signal);
+	signal(SIGTERM, received_signal);
 
-	return EXIT_SUCCESS;
+	while (doexit == 0) {
+		if (read_event(nls) != EXIT_SUCCESS) {
+			fprintf(stderr, "read_event returned error.\n");
+			goto out10;
+		}
+	}
+
+	if (verbose > 0)
+		printf("Exiting...\n");
+
+	for(; maxinterface > 0; maxinterface--) {
+		if (verbose > 0)
+			printf("Freeing interface %d (%s).\n", maxinterface,
+					ifs[maxinterface].name);
+
+		free_addresses(ifs[maxinterface].addresses_seen);
+		if (ifs[maxinterface].notification != NULL)
+			g_object_unref(G_OBJECT(ifs[maxinterface].notification));
+	}
+
+	rc = EXIT_SUCCESS;
+
+out10:
+	if (ifs != NULL)
+		free(ifs);
+
+/* out20: */
+	notify_uninit();
+
+out30:
+	if (close(nls) < 0)
+		fprintf(stderr, "Failed to close socket.\n");
+
+out40:
+	return rc;
 }

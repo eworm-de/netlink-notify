@@ -1,5 +1,6 @@
 *~
 *.o
+config.h
 netlink-notify
 README.html
 version.h

@@ -4,6 +4,7 @@ CC	:= gcc
 MD	:= markdown
 CONVERT	:= convert -define png:compression-level=9 -background transparent
 INSTALL	:= install
+CP	:= cp
 RM	:= rm
 CFLAGS	+= -O2 -Wall -Werror
 CFLAGS	+= $(shell pkg-config --cflags --libs libnotify)
@@ -13,8 +14,11 @@ VERSION := 0.6.6
 
 all: netlink-notify icons README.html
 
-netlink-notify: netlink-notify.c version.h
+netlink-notify: netlink-notify.c version.h config.h
 	$(CC) $(CFLAGS) -o netlink-notify netlink-notify.c
+
+config.h:
+	$(CP) config.def.h config.h
 
 version.h: $(wildcard .git/HEAD .git/index .git/refs/tags/*) Makefile
 	echo "#ifndef VERSION" > $@
@@ -62,7 +66,10 @@ install-doc: README.html
 	$(INSTALL) -D -m0644 screenshot-up.png $(DESTDIR)/usr/share/doc/netlink-notify/screenshot-up.png
 
 clean:
-	$(RM) -f *.o *~ netlink-notify-*.png README.html netlink-notify version.h
+	$(RM) -f *.o *~ README.html netlink-notify version.h
+
+distclean:
+	$(RM) -f *.o *~ README.html netlink-notify version.h config.h
 
 release:
 	git archive --format=tar.xz --prefix=netlink-notify-$(VERSION)/ $(VERSION) > netlink-notify-$(VERSION).tar.xz
