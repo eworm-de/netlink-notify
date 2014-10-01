@@ -234,9 +234,17 @@ int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			maxinterface++;
 
 			if (verbose > 0)
-				printf("%s: Initializing interface %d.\n", program, maxinterface);
+				printf("%s: Initializing interface %d: ", program, maxinterface);
 
-			strcpy(ifs[maxinterface].name, "(unknown)");
+			/* get interface name and store it
+			 * in case the interface does no longer exist this may fail,
+			 * use static string '(unknown)' instead */
+			if (if_indextoname(maxinterface, ifs[maxinterface].name) == NULL)
+				strcpy(ifs[maxinterface].name, "(unknown)");
+
+			if (verbose > 0)
+				printf("%s\n", ifs[maxinterface].name);
+
 			ifs[maxinterface].state = -1;
 			ifs[maxinterface].deleted = 0;
 
