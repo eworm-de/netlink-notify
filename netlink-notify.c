@@ -444,7 +444,7 @@ out:
 /*** received_signal ***/
 void received_signal(int signal) {
 	if (verbose > 0)
-		printf("%s: Received signal: %d\n", program, signal);
+		printf("%s: Received signal: %s\n", program, strsignal(signal));
 
 	doexit++;
 }
