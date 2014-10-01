@@ -436,7 +436,7 @@ out:
 /*** received_signal ***/
 void received_signal(int signal) {
 	if (verbose > 0)
-		printf("Received signal: %d\n", signal);
+		printf("%s: Received signal: %d\n", program, signal);
 
 	doexit++;
 }
@@ -461,15 +461,15 @@ int main (int argc, char **argv) {
 		}
 	}
 
-	printf ("%s: %s v%s (compiled: " __DATE__ ", " __TIME__ ")\n", argv[0], PROGNAME, VERSION);
+	printf ("%s: %s v%s (compiled: " __DATE__ ", " __TIME__ ")\n", program, PROGNAME, VERSION);
 
 	if ((nls = open_netlink()) < 0) {
-		fprintf (stderr, "%s: Error opening netlink socket!", argv[0]);
+		fprintf (stderr, "%s: Error opening netlink socket!\n", program);
 		goto out40;
 	}
 
 	if (!notify_init (PROGNAME)) {
-		fprintf (stderr, "%s: Can't create notify.\n", argv[0]);
+		fprintf (stderr, "%s: Can't create notify.\n", program);
 		goto out30;
 	}
 
@@ -478,18 +478,18 @@ int main (int argc, char **argv) {
 
 	while (doexit == 0) {
 		if (read_event(nls) != EXIT_SUCCESS) {
-			fprintf(stderr, "read_event returned error.\n");
+			fprintf(stderr, "%s: read_event returned error.\n", program);
 			goto out10;
 		}
 	}
 
 	if (verbose > 0)
-		printf("Exiting...\n");
+		printf("%s: Exiting...\n", program);
 
 	for(; maxinterface > 0; maxinterface--) {
 		if (verbose > 0)
-			printf("Freeing interface %d (%s).\n", maxinterface,
-					ifs[maxinterface].name);
+			printf("%s: Freeing interface %d: %s\n", program,
+					maxinterface, ifs[maxinterface].name);
 
 		free_addresses(ifs[maxinterface].addresses_seen);
 		if (ifs[maxinterface].notification != NULL)
@@ -507,7 +507,7 @@ out10:
 
 out30:
 	if (close(nls) < 0)
-		fprintf(stderr, "Failed to close socket.\n");
+		fprintf(stderr, "%s: Failed to close socket.\n", program);
 
 out40:
 	return rc;
