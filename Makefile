@@ -1,6 +1,6 @@
 # netlink-notify - Notify about netlink changes
 
-CC	:= gcc
+CC	:= gcc -std=c11
 MD	:= markdown
 CONVERT	:= convert -define png:compression-level=9 -background transparent
 INSTALL	:= install

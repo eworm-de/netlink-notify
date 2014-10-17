@@ -8,6 +8,8 @@
 #ifndef NETLINK_NOTIFY_H
 #define NETLINK_NOTIFY_H
 
+#define _GNU_SOURCE
+
 #include <asm/types.h>
 #include <getopt.h>
 #include <unistd.h>
