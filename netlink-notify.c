@@ -408,7 +408,7 @@ int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 
 	notify_notification_update(notification, TEXT_TOPIC, notifystr, icon);
 
-	while (!notify_notification_show (notification, &error)) {
+	while (notify_notification_show(notification, &error) == FALSE) {
 		if (errcount > 1) {
 			fprintf(stderr, "%s: Looks like we can not reconnect to notification daemon... Exiting.\n", program);
 			goto out;
@@ -416,14 +416,14 @@ int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			g_printerr("%s: Error \"%s\" while trying to show notification. Trying to reconnect.\n", program, error->message);
 			errcount++;
 
-			g_error_free (error);
+			g_error_free(error);
 			error = NULL;
 
-			notify_uninit ();
+			notify_uninit();
 
 			usleep (500 * 1000);
 
-			if (!notify_init (PROGNAME)) {
+			if (notify_init(PROGNAME) == FALSE) {
 				fprintf(stderr, "%s: Can't create notify.\n", program);
 				goto out;
 			}
@@ -476,7 +476,7 @@ int main (int argc, char **argv) {
 		goto out40;
 	}
 
-	if (!notify_init (PROGNAME)) {
+	if (notify_init(PROGNAME) == FALSE) {
 		fprintf (stderr, "%s: Can't create notify.\n", program);
 		goto out30;
 	}
