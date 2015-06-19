@@ -8,11 +8,12 @@
 
 #include "netlink-notify.h"
 
-const static char optstring[] = "hv";
+const static char optstring[] = "ht:v";
 const static struct option options_long[] = {
-	/* name		has_arg		flag	val */
-	{ "help",	no_argument,	NULL,	'h' },
-	{ "verbose",	no_argument,	NULL,	'v' },
+	/* name		has_arg			flag	val */
+	{ "help",	no_argument,		NULL,	'h' },
+	{ "timeout",	required_argument,	NULL,	't' },
+	{ "verbose",	no_argument,		NULL,	'v' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -21,6 +22,7 @@ unsigned int maxinterface = 0;
 struct ifs * ifs = NULL;
 uint8_t verbose = 0;
 uint8_t doexit = 0;
+unsigned int notification_timeout = NOTIFICATION_TIMEOUT;
 
 /*** free_addresses ***/
 void free_addresses(struct addresses_seen *addresses_seen) {
@@ -256,6 +258,7 @@ int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 #				endif
 			notify_notification_set_category(ifs[maxinterface].notification, PROGNAME);
 			notify_notification_set_urgency(ifs[maxinterface].notification, NOTIFY_URGENCY_NORMAL);
+			notify_notification_set_timeout(ifs[maxinterface].notification, notification_timeout);
 
 			ifs[maxinterface].addresses_seen = NULL;
 		}
@@ -329,6 +332,7 @@ int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 #				endif
 			notify_notification_set_category(tmp_notification, PROGNAME);
 			notify_notification_set_urgency(tmp_notification, NOTIFY_URGENCY_NORMAL);
+			notify_notification_set_timeout(tmp_notification, notification_timeout);
 
 			notification = tmp_notification;
 
@@ -460,9 +464,12 @@ int main (int argc, char **argv) {
 	while ((i = getopt_long(argc, argv, optstring, options_long, NULL)) != -1) {
 		switch (i) {
 			case 'h':
-				printf("usage: %s [-h] [-v[v]]\n", program);
+				printf("usage: %s [-h] [-t TIMEOUT] [-v[v]]\n", program);
 				rc = EXIT_SUCCESS;
 				goto out40;
+			case 't':
+				notification_timeout = atof(optarg) * 1000;
+				break;
 			case 'v':
 				verbose++;
 				break;
