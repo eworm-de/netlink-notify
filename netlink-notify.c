@@ -8,12 +8,13 @@
 
 #include "netlink-notify.h"
 
-const static char optstring[] = "ht:v";
+const static char optstring[] = "ht:vV";
 const static struct option options_long[] = {
 	/* name		has_arg			flag	val */
 	{ "help",	no_argument,		NULL,	'h' },
 	{ "timeout",	required_argument,	NULL,	't' },
 	{ "verbose",	no_argument,		NULL,	'v' },
+	{ "version",	no_argument,		NULL,	'V' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -457,6 +458,7 @@ void received_signal(int signal) {
 int main (int argc, char **argv) {
 	int rc = EXIT_FAILURE;
 	int i, nls;
+	unsigned int version = 0, help = 0;
 
 	program = argv[0];
 
@@ -464,19 +466,29 @@ int main (int argc, char **argv) {
 	while ((i = getopt_long(argc, argv, optstring, options_long, NULL)) != -1) {
 		switch (i) {
 			case 'h':
-				printf("usage: %s [-h] [-t TIMEOUT] [-v[v]]\n", program);
-				rc = EXIT_SUCCESS;
-				goto out40;
+				help++;
+				break;
 			case 't':
 				notification_timeout = atof(optarg) * 1000;
 				break;
 			case 'v':
 				verbose++;
 				break;
+			case 'V':
+				verbose++;
+				version++;
+				break;
 		}
 	}
 
-	printf ("%s: %s v%s (compiled: " __DATE__ ", " __TIME__ ")\n", program, PROGNAME, VERSION);
+	if (verbose > 0)
+		printf ("%s: %s v%s (compiled: " __DATE__ ", " __TIME__ ")\n", program, PROGNAME, VERSION);
+
+	if (help > 0)
+		printf("usage: %s [-h] [-t TIMEOUT] [-v[v]] [-V]\n", program);
+
+	if (version > 0 || help > 0)
+		return EXIT_SUCCESS;
 
 	if ((nls = open_netlink()) < 0) {
 		fprintf (stderr, "%s: Error opening netlink socket!\n", program);
