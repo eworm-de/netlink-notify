@@ -25,19 +25,19 @@ version.h: $(wildcard .git/HEAD .git/index .git/refs/tags/*) Makefile
 	echo "#define VERSION \"$(shell git describe --tags --long 2>/dev/null || echo ${VERSION})\"" >> $@
 	echo "#endif" >> $@
 
-icons: netlink-notify-up.png netlink-notify-down.png netlink-notify-address.png netlink-notify-away.png
+icons: icons/netlink-notify-up.png icons/netlink-notify-down.png icons/netlink-notify-address.png icons/netlink-notify-away.png
 
-netlink-notify-up.png: netlink-notify-up.svg
-	$(CONVERT) netlink-notify-up.svg netlink-notify-up.png
+icons/netlink-notify-up.png: icons/netlink-notify-up.svg
+	$(CONVERT) icons/netlink-notify-up.svg icons/netlink-notify-up.png
 
-netlink-notify-down.png: netlink-notify-down.svg
-	$(CONVERT) netlink-notify-down.svg netlink-notify-down.png
+icons/netlink-notify-down.png: icons/netlink-notify-down.svg
+	$(CONVERT) icons/netlink-notify-down.svg icons/netlink-notify-down.png
 
-netlink-notify-address.png: netlink-notify-address.svg
-	$(CONVERT) netlink-notify-address.svg netlink-notify-address.png
+icons/netlink-notify-address.png: icons/netlink-notify-address.svg
+	$(CONVERT) icons/netlink-notify-address.svg icons/netlink-notify-address.png
 
-netlink-notify-away.png: netlink-notify-away.svg
-	$(CONVERT) netlink-notify-away.svg netlink-notify-away.png
+icons/netlink-notify-away.png: icons/netlink-notify-away.svg
+	$(CONVERT) icons/netlink-notify-away.svg icons/netlink-notify-away.png
 
 README.html: README.md
 	$(MD) README.md > README.html
@@ -47,23 +47,23 @@ install: install-bin install-doc
 install-bin: netlink-notify icons
 	$(INSTALL) -D -m0755 netlink-notify $(DESTDIR)/usr/bin/netlink-notify
 	$(INSTALL) -D -m0644 netlink-notify.desktop $(DESTDIR)/etc/xdg/autostart/netlink-notify.desktop
-	$(INSTALL) -D -m0755 netlink-notify-up.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-up.svg
-	$(INSTALL) -D -m0755 netlink-notify-down.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-down.svg
-	$(INSTALL) -D -m0755 netlink-notify-address.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-address.svg
-	$(INSTALL) -D -m0755 netlink-notify-away.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-away.svg
-	$(INSTALL) -D -m0755 netlink-notify-up.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-up.png
-	$(INSTALL) -D -m0755 netlink-notify-down.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-down.png
-	$(INSTALL) -D -m0755 netlink-notify-address.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-address.png
-	$(INSTALL) -D -m0755 netlink-notify-away.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-away.png
+	$(INSTALL) -D -m0755 icons/netlink-notify-up.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-up.svg
+	$(INSTALL) -D -m0755 icons/netlink-notify-down.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-down.svg
+	$(INSTALL) -D -m0755 icons/netlink-notify-address.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-address.svg
+	$(INSTALL) -D -m0755 icons/netlink-notify-away.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-away.svg
+	$(INSTALL) -D -m0755 icons/netlink-notify-up.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-up.png
+	$(INSTALL) -D -m0755 icons/netlink-notify-down.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-down.png
+	$(INSTALL) -D -m0755 icons/netlink-notify-address.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-address.png
+	$(INSTALL) -D -m0755 icons/netlink-notify-away.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-away.png
 
 install-doc: README.html
 	$(INSTALL) -D -m0644 README.md $(DESTDIR)/usr/share/doc/netlink-notify/README.md
 	$(INSTALL) -D -m0644 README.html $(DESTDIR)/usr/share/doc/netlink-notify/README.html
-	$(INSTALL) -D -m0644 screenshot-away.png $(DESTDIR)/usr/share/doc/netlink-notify/screenshot-away.png
-	$(INSTALL) -D -m0644 screenshot-down.png $(DESTDIR)/usr/share/doc/netlink-notify/screenshot-down.png
-	$(INSTALL) -D -m0644 screenshot-ip.png $(DESTDIR)/usr/share/doc/netlink-notify/screenshot-ip.png
-	$(INSTALL) -D -m0644 screenshot-ipv6.png $(DESTDIR)/usr/share/doc/netlink-notify/screenshot-ipv6.png
-	$(INSTALL) -D -m0644 screenshot-up.png $(DESTDIR)/usr/share/doc/netlink-notify/screenshot-up.png
+	$(INSTALL) -D -m0644 screenshots/away.png $(DESTDIR)/usr/share/doc/netlink-notify/screenshots/away.png
+	$(INSTALL) -D -m0644 screenshots/down.png $(DESTDIR)/usr/share/doc/netlink-notify/screenshots/down.png
+	$(INSTALL) -D -m0644 screenshots/ip.png $(DESTDIR)/usr/share/doc/netlink-notify/screenshots/ip.png
+	$(INSTALL) -D -m0644 screenshots/ipv6.png $(DESTDIR)/usr/share/doc/netlink-notify/screenshots/ipv6.png
+	$(INSTALL) -D -m0644 screenshots/up.png $(DESTDIR)/usr/share/doc/netlink-notify/screenshots/up.png
 
 clean:
 	$(RM) -f *.o *~ README.html netlink-notify version.h

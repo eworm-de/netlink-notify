@@ -8,23 +8,23 @@ is received. Notifications look like this:
 
 A device is down:
 
-![Device down](screenshot-down.png)
+![Device down](screenshots/down.png)
 
 A device is up:
 
-![Device up](screenshot-up.png)
+![Device up](screenshots/up.png)
 
 A device received an IP address:
 
-![Device received IP address](screenshot-ip.png)
+![Device received IP address](screenshots/ip.png)
 
 A device received an IPv6 address:
 
-![Device received IPv6 address](screenshot-ipv6.png)
+![Device received IPv6 address](screenshots/ipv6.png)
 
 A device disappeared:
 
-![Device disappeared](screenshot-away.png)
+![Device disappeared](screenshots/away.png)
 
 Requirements
 ------------
