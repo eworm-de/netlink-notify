@@ -60,3 +60,8 @@ Usage
 
 Just run `netlink-notify` after installation or re-login to desktop
 environment for autostart.
+
+### Upstream
+
+URL: [GitHub.com](https://github.com/eworm-de/netlink-notify)  
+Mirror: [eworm.de](http://git.eworm.de/cgit.cgi/netlink-notify/)
