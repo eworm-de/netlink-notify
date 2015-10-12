@@ -47,14 +47,14 @@ install: install-bin install-doc
 install-bin: netlink-notify icons
 	$(INSTALL) -D -m0755 netlink-notify $(DESTDIR)/usr/bin/netlink-notify
 	$(INSTALL) -D -m0644 systemd/netlink-notify.service $(DESTDIR)/usr/lib/systemd/user/netlink-notify.service
-	$(INSTALL) -D -m0755 icons/netlink-notify-up.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-up.svg
-	$(INSTALL) -D -m0755 icons/netlink-notify-down.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-down.svg
-	$(INSTALL) -D -m0755 icons/netlink-notify-address.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-address.svg
-	$(INSTALL) -D -m0755 icons/netlink-notify-away.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-away.svg
-	$(INSTALL) -D -m0755 icons/netlink-notify-up.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-up.png
-	$(INSTALL) -D -m0755 icons/netlink-notify-down.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-down.png
-	$(INSTALL) -D -m0755 icons/netlink-notify-address.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-address.png
-	$(INSTALL) -D -m0755 icons/netlink-notify-away.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-away.png
+	$(INSTALL) -D -m0644 icons/netlink-notify-up.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-up.svg
+	$(INSTALL) -D -m0644 icons/netlink-notify-down.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-down.svg
+	$(INSTALL) -D -m0644 icons/netlink-notify-address.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-address.svg
+	$(INSTALL) -D -m0644 icons/netlink-notify-away.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/status/netlink-notify-away.svg
+	$(INSTALL) -D -m0644 icons/netlink-notify-up.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-up.png
+	$(INSTALL) -D -m0644 icons/netlink-notify-down.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-down.png
+	$(INSTALL) -D -m0644 icons/netlink-notify-address.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-address.png
+	$(INSTALL) -D -m0644 icons/netlink-notify-away.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-away.png
 
 install-doc: README.html
 	$(INSTALL) -D -m0644 README.md $(DESTDIR)/usr/share/doc/netlink-notify/README.md
