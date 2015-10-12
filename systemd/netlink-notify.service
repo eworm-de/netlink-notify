@@ -1,0 +1,9 @@
+[Unit]
+Description=Netlink Notification
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/netlink-notify
+
+[Install]
+WantedBy=default.target
