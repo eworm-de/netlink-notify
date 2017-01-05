@@ -2,7 +2,7 @@
 Description=Netlink Notification
 
 [Service]
-Type=simple
+Type=notify
 ExecStart=/usr/bin/netlink-notify
 
 [Install]

@@ -30,6 +30,11 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
+/* systemd headers */
+#ifdef HAVE_SYSTEMD
+#include <systemd/sd-daemon.h>
+#endif
+
 #include <libnotify/notify.h>
 
 #include "version.h"

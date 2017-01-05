@@ -31,6 +31,7 @@ Requirements
 
 To compile and run `netlink-notify` you need:
 
+* [systemd](https://www.github.com/systemd/systemd)
 * [libnotify](http://library.gnome.org/devel/notification-spec/)
 * [linux](http://www.kernel.org/)
 * [markdown](http://daringfireball.net/projects/markdown/) (HTML documentation)

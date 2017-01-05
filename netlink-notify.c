@@ -503,6 +503,10 @@ int main (int argc, char **argv) {
 	signal(SIGINT, received_signal);
 	signal(SIGTERM, received_signal);
 
+#ifdef HAVE_SYSTEMD
+	sd_notify(0, "READY=1\nSTATUS=Waiting for netlink events...");
+#endif
+
 	while (doexit == 0) {
 		if (read_event(nls) != EXIT_SUCCESS) {
 			fprintf(stderr, "%s: read_event returned error.\n", program);

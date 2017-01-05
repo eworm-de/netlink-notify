@@ -11,6 +11,10 @@ RM	:= rm
 # flags
 CFLAGS	+= -std=c11 -O2 -fPIC -Wall -Werror
 CFLAGS	+= $(shell pkg-config --cflags --libs libnotify)
+CFLAGS_SYSTEMD := $(shell pkg-config --cflags --libs libsystemd 2>/dev/null)
+ifneq ($(CFLAGS_SYSTEMD),)
+CFLAGS	+= -DHAVE_SYSTEMD $(CFLAGS_SYSTEMD)
+endif
 LDFLAGS	+= -Wl,-z,now -Wl,-z,relro -pie
 
 # this is just a fallback in case you do not use git but downloaded
