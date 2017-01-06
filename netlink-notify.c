@@ -517,6 +517,11 @@ int main (int argc, char **argv) {
 	if (verbose > 0)
 		printf("%s: Exiting...\n", program);
 
+	/* report stopping to systemd */
+#ifdef HAVE_SYSTEMD
+	sd_notify(0, "STOPPING=1\nSTATUS=Stopping...");
+#endif
+
 	for(; maxinterface > 0; maxinterface--) {
 		if (verbose > 0)
 			printf("%s: Freeing interface %d: %s\n", program,
@@ -541,5 +546,9 @@ out30:
 		fprintf(stderr, "%s: Failed to close socket.\n", program);
 
 out40:
+#ifdef HAVE_SYSTEMD
+	sd_notify(0, "STATUS=Stopped. Bye!");
+#endif
+
 	return rc;
 }
