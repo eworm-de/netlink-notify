@@ -65,4 +65,4 @@ or `systemctl --user enable netlink-notify`.
 ### Upstream
 
 URL: [GitHub.com](https://github.com/eworm-de/netlink-notify)  
-Mirror: [eworm.de](http://git.eworm.de/cgit.cgi/netlink-notify/)
+Mirror: [eworm.de](https://git.eworm.de/cgit.cgi/netlink-notify/)
