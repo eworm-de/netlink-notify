@@ -5,7 +5,6 @@
  * of the GNU General Public License, incorporated herein by reference.
  */
 
-
 #include "netlink-notify.h"
 
 const static char optstring[] = "ht:vV";
@@ -113,31 +112,31 @@ void list_addresses(struct addresses_seen *addresses_seen, char *interface) {
 }
 
 /*** newstr_link ***/
-char * newstr_link(const char *text, char *interface, unsigned int flags) {
+char * newstr_link(char *interface, unsigned int flags) {
 	char *notifystr;
 
-	notifystr = malloc(strlen(text) + strlen(interface) + 4);
-	sprintf(notifystr, text, interface, (flags & CHECK_CONNECTED) ? "up" : "down");
+	notifystr = malloc(sizeof(TEXT_NEWLINK) + strlen(interface) + 4);
+	sprintf(notifystr, TEXT_NEWLINK, interface, (flags & CHECK_CONNECTED) ? "up" : "down");
 
 	return notifystr;
 }
 
 /*** newstr_addr ***/
-char * newstr_addr(const char *text, char *interface, unsigned char family, char *ipaddr, unsigned char prefix) {
+char * newstr_addr(char *interface, unsigned char family, char *ipaddr, unsigned char prefix) {
 	char *notifystr;
 
-	notifystr = malloc(strlen(text) + strlen(interface) + strlen(ipaddr));
-	sprintf(notifystr, text, interface, family == AF_INET6 ? "IPv6" : "IP", ipaddr, prefix);
+	notifystr = malloc(sizeof(TEXT_NEWADDR)+ strlen(interface) + strlen(ipaddr));
+	sprintf(notifystr, TEXT_NEWADDR, interface, family == AF_INET6 ? "IPv6" : "IP", ipaddr, prefix);
 
 	return notifystr;
 }
 
 /*** newstr_away ***/
-char * newstr_away(const char *text, char *interface) {
+char * newstr_away(char *interface) {
 	char *notifystr;
 
-	notifystr = malloc(strlen(text) + strlen(interface));
-	sprintf(notifystr, text, interface);
+	notifystr = malloc(sizeof(TEXT_DELLINK) + strlen(interface));
+	sprintf(notifystr, TEXT_DELLINK, interface);
 
 	return notifystr;
 }
@@ -310,7 +309,7 @@ int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 						list_addresses(ifs[ifi->ifi_index].addresses_seen, ifs[ifi->ifi_index].name);
 
 					/* display notification */
-					notifystr = newstr_addr(TEXT_NEWADDR, ifs[ifi->ifi_index].name,
+					notifystr = newstr_addr(ifs[ifi->ifi_index].name,
 						ifa->ifa_family, buf, ifa->ifa_prefixlen);
 
 					/* we are done, no need to run more loops */
@@ -380,7 +379,7 @@ int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 
 			ifs[ifi->ifi_index].state = ifi->ifi_flags & CHECK_CONNECTED;
 
-			notifystr = newstr_link(TEXT_NEWLINK, ifs[ifi->ifi_index].name, ifi->ifi_flags);
+			notifystr = newstr_link(ifs[ifi->ifi_index].name, ifi->ifi_flags);
 
 			icon = ifi->ifi_flags & CHECK_CONNECTED ? ICON_NETWORK_UP : ICON_NETWORK_DOWN;
 
@@ -392,7 +391,7 @@ int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 
 			break;
 		case RTM_DELLINK:
-			notifystr = newstr_away(TEXT_DELLINK, ifs[ifi->ifi_index].name);
+			notifystr = newstr_away(ifs[ifi->ifi_index].name);
 
 			icon = ICON_NETWORK_AWAY;
 

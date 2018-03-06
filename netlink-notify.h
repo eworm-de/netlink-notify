@@ -74,13 +74,13 @@ int match_address(struct addresses_seen *addresses_seen, const char *address, un
 void list_addresses(struct addresses_seen *addresses_seen, char *interface);
 
 /*** newstr_link ***/
-char * newstr_link(const char *text, char *interface, unsigned int flags);
+char * newstr_link(char *interface, unsigned int flags);
 
 /*** newstr_addr ***/
-char * newstr_addr(const char *text, char *interface, unsigned char family, char *ipaddr, unsigned char prefix);
+char * newstr_addr(char *interface, unsigned char family, char *ipaddr, unsigned char prefix);
 
 /*** newstr_away ***/
-char * newstr_away(const char *text, char *interface);
+char * newstr_away(char *interface);
 
 /*** open_netlink ***/
 int open_netlink (void);
