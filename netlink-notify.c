@@ -111,12 +111,38 @@ void list_addresses(struct addresses_seen *addresses_seen, char *interface) {
 	putchar('\n');
 }
 
+/*** get_ssid ***/
+void get_ssid(const char *interface, char *essid) {
+	int sockfd;
+	struct iwreq wreq;
+
+	memset(&wreq, 0, sizeof(struct iwreq));
+	snprintf(wreq.ifr_name, IFNAMSIZ, interface);
+	wreq.u.essid.pointer = essid;
+	wreq.u.essid.length = IW_ESSID_MAX_SIZE + 1;
+
+	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
+		return;
+
+	if (ioctl(sockfd, SIOCGIWESSID, &wreq) == -1)
+		return;
+}
+
 /*** newstr_link ***/
 char * newstr_link(char *interface, unsigned int flags) {
 	char *notifystr;
+	char essid[IW_ESSID_MAX_SIZE + 1];
 
-	notifystr = malloc(sizeof(TEXT_NEWLINK) + strlen(interface) + 4);
-	sprintf(notifystr, TEXT_NEWLINK, interface, (flags & CHECK_CONNECTED) ? "up" : "down");
+	memset(&essid, 0, IW_ESSID_MAX_SIZE + 1);
+	get_ssid(interface, essid);
+
+	if (strlen(essid) == 0) {
+		notifystr = malloc(sizeof(TEXT_NEWLINK) + strlen(interface) + 4);
+		sprintf(notifystr, TEXT_NEWLINK, interface, (flags & CHECK_CONNECTED) ? "up" : "down");
+	} else {
+		notifystr = malloc(sizeof(TEXT_WIRELESS) + strlen(interface) + 4 + strlen(essid));
+		sprintf(notifystr, TEXT_WIRELESS, interface, (flags & CHECK_CONNECTED) ? "up" : "down", essid);
+	}
 
 	return notifystr;
 }

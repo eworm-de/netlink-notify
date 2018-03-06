@@ -23,11 +23,13 @@
 #include <linux/if.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include <linux/wireless.h>
 /* we have to undefine this before including net/if.h to
  * notget redefined structs, etc. */
 #undef __USE_MISC
 #include <net/if.h>
 #include <netinet/in.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 
 /* systemd headers */
@@ -72,6 +74,9 @@ int match_address(struct addresses_seen *addresses_seen, const char *address, un
 
 /*** list_addresses ***/
 void list_addresses(struct addresses_seen *addresses_seen, char *interface);
+
+/*** get_ssid ***/
+void get_ssid(const char *interface, char *essid);
 
 /*** newstr_link ***/
 char * newstr_link(char *interface, unsigned int flags);

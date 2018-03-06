@@ -20,6 +20,7 @@
 /* define notification text messages */
 #define TEXT_TOPIC	"Netlink Notification"
 #define TEXT_NEWLINK	"Interface <b>%s</b> is <b>%s</b>."
+#define TEXT_WIRELESS	"Interface <b>%s</b> is <b>%s</b> on <b>%s</b>."
 #define TEXT_NEWADDR	"Interface <b>%s</b> has new %s address\n<b>%s</b>/%d."
 #define TEXT_DELLINK	"Interface <b>%s</b> has gone away."
 
