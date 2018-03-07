@@ -64,28 +64,28 @@ struct ifs {
 void free_addresses(struct addresses_seen *addresses_seen);
 
 /*** add_address ***/
-struct addresses_seen * add_address(struct addresses_seen *addresses_seen, const char *address, unsigned char prefix);
+struct addresses_seen * add_address(struct addresses_seen *addresses_seen, const char *address, const unsigned char prefix);
 
 /*** remove_address ***/
-struct addresses_seen * remove_address(struct addresses_seen *addresses_seen, const char *address, unsigned char prefix);
+struct addresses_seen * remove_address(struct addresses_seen *addresses_seen, const char *address, const unsigned char prefix);
 
 /*** match_address ***/
-int match_address(struct addresses_seen *addresses_seen, const char *address, unsigned char prefix);
+int match_address(struct addresses_seen *addresses_seen, const char *address, const unsigned char prefix);
 
 /*** list_addresses ***/
-void list_addresses(struct addresses_seen *addresses_seen, char *interface);
+void list_addresses(struct addresses_seen *addresses_seen, const char *interface);
 
 /*** get_ssid ***/
 void get_ssid(const char *interface, char *essid);
 
 /*** newstr_link ***/
-char * newstr_link(char *interface, unsigned int flags);
+char * newstr_link(const char *interface, const unsigned int flags);
 
 /*** newstr_addr ***/
-char * newstr_addr(char *interface, unsigned char family, char *ipaddr, unsigned char prefix);
+char * newstr_addr(const char *interface, const unsigned char family, const char *ipaddr, const unsigned char prefix);
 
 /*** newstr_away ***/
-char * newstr_away(char *interface);
+char * newstr_away(const char *interface);
 
 /*** open_netlink ***/
 int open_netlink (void);

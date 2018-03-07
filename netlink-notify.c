@@ -37,7 +37,7 @@ void free_addresses(struct addresses_seen *addresses_seen) {
 }
 
 /*** add_address ***/
-struct addresses_seen * add_address(struct addresses_seen *addresses_seen, const char *address, unsigned char prefix) {
+struct addresses_seen * add_address(struct addresses_seen *addresses_seen, const char *address, const unsigned char prefix) {
 	struct addresses_seen *first = addresses_seen;
 
 	if (addresses_seen == NULL) {
@@ -63,7 +63,7 @@ struct addresses_seen * add_address(struct addresses_seen *addresses_seen, const
 }
 
 /*** remove_address ***/
-struct addresses_seen * remove_address(struct addresses_seen *addresses_seen, const char *address, unsigned char prefix) {
+struct addresses_seen * remove_address(struct addresses_seen *addresses_seen, const char *address, const unsigned char prefix) {
 	struct addresses_seen *first = addresses_seen, *last = NULL;
 
 	/* no addresses, just return NULL */
@@ -91,7 +91,7 @@ struct addresses_seen * remove_address(struct addresses_seen *addresses_seen, co
 }
 
 /*** match_address ***/
-int match_address(struct addresses_seen *addresses_seen, const char *address, unsigned char prefix) {
+int match_address(struct addresses_seen *addresses_seen, const char *address, const unsigned char prefix) {
 	while (addresses_seen != NULL) {
 		if (strcmp(addresses_seen->address, address) == 0 && addresses_seen->prefix == prefix) {
 			return 1;
@@ -102,7 +102,7 @@ int match_address(struct addresses_seen *addresses_seen, const char *address, un
 }
 
 /*** list_addresses ***/
-void list_addresses(struct addresses_seen *addresses_seen, char *interface) {
+void list_addresses(struct addresses_seen *addresses_seen, const char *interface) {
 	printf("%s: Addresses seen for interface %s:", program, interface);
 	while (addresses_seen != NULL) {
 		printf(" %s/%d", addresses_seen->address, addresses_seen->prefix);
@@ -130,7 +130,7 @@ void get_ssid(const char *interface, char *essid) {
 }
 
 /*** newstr_link ***/
-char * newstr_link(char *interface, unsigned int flags) {
+char * newstr_link(const char *interface, const unsigned int flags) {
 	char *notifystr, *e_interface = NULL, *e_essid = NULL;
 	char essid[IW_ESSID_MAX_SIZE + 1];
 
@@ -157,7 +157,7 @@ char * newstr_link(char *interface, unsigned int flags) {
 }
 
 /*** newstr_addr ***/
-char * newstr_addr(char *interface, unsigned char family, char *ipaddr, unsigned char prefix) {
+char * newstr_addr(const char *interface, const unsigned char family, const char *ipaddr, const unsigned char prefix) {
 	char *notifystr, *e_interface = NULL;
 
 	e_interface = g_markup_escape_text(interface, -1);
@@ -171,7 +171,7 @@ char * newstr_addr(char *interface, unsigned char family, char *ipaddr, unsigned
 }
 
 /*** newstr_away ***/
-char * newstr_away(char *interface) {
+char * newstr_away(const char *interface) {
 	char *notifystr, *e_interface = NULL;
 
 	e_interface = g_markup_escape_text(interface, -1);
