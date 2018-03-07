@@ -131,39 +131,55 @@ void get_ssid(const char *interface, char *essid) {
 
 /*** newstr_link ***/
 char * newstr_link(char *interface, unsigned int flags) {
-	char *notifystr;
+	char *notifystr, *e_interface = NULL, *e_essid = NULL;
 	char essid[IW_ESSID_MAX_SIZE + 1];
 
 	memset(&essid, 0, IW_ESSID_MAX_SIZE + 1);
 	get_ssid(interface, essid);
 
+	e_interface = g_markup_escape_text(interface, -1);
+
 	if (strlen(essid) == 0) {
-		notifystr = malloc(sizeof(TEXT_NEWLINK) + strlen(interface) + 4);
-		sprintf(notifystr, TEXT_NEWLINK, interface, (flags & CHECK_CONNECTED) ? "up" : "down");
+		notifystr = malloc(sizeof(TEXT_NEWLINK) + strlen(e_interface) + 4);
+		sprintf(notifystr, TEXT_NEWLINK, e_interface, (flags & CHECK_CONNECTED) ? "up" : "down");
 	} else {
-		notifystr = malloc(sizeof(TEXT_WIRELESS) + strlen(interface) + 4 + strlen(essid));
-		sprintf(notifystr, TEXT_WIRELESS, interface, (flags & CHECK_CONNECTED) ? "up" : "down", essid);
+		e_essid = g_markup_escape_text(essid, -1);
+
+		notifystr = malloc(sizeof(TEXT_WIRELESS) + strlen(e_interface) + 4 + strlen(e_essid));
+		sprintf(notifystr, TEXT_WIRELESS, e_interface, (flags & CHECK_CONNECTED) ? "up" : "down", e_essid);
+
+		free(e_essid);
 	}
+
+	free(e_interface);
 
 	return notifystr;
 }
 
 /*** newstr_addr ***/
 char * newstr_addr(char *interface, unsigned char family, char *ipaddr, unsigned char prefix) {
-	char *notifystr;
+	char *notifystr, *e_interface = NULL;
 
-	notifystr = malloc(sizeof(TEXT_NEWADDR)+ strlen(interface) + strlen(ipaddr));
-	sprintf(notifystr, TEXT_NEWADDR, interface, family == AF_INET6 ? "IPv6" : "IP", ipaddr, prefix);
+	e_interface = g_markup_escape_text(interface, -1);
+
+	notifystr = malloc(sizeof(TEXT_NEWADDR)+ strlen(e_interface) + strlen(ipaddr));
+	sprintf(notifystr, TEXT_NEWADDR, e_interface, family == AF_INET6 ? "IPv6" : "IP", ipaddr, prefix);
+
+	free(e_interface);
 
 	return notifystr;
 }
 
 /*** newstr_away ***/
 char * newstr_away(char *interface) {
-	char *notifystr;
+	char *notifystr, *e_interface = NULL;
 
-	notifystr = malloc(sizeof(TEXT_DELLINK) + strlen(interface));
-	sprintf(notifystr, TEXT_DELLINK, interface);
+	e_interface = g_markup_escape_text(interface, -1);
+
+	notifystr = malloc(sizeof(TEXT_DELLINK) + strlen(e_interface));
+	sprintf(notifystr, TEXT_DELLINK, e_interface);
+
+	free(e_interface);
 
 	return notifystr;
 }
