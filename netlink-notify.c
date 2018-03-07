@@ -124,8 +124,9 @@ void get_ssid(const char *interface, char *essid) {
 	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
 		return;
 
-	if (ioctl(sockfd, SIOCGIWESSID, &wreq) == -1)
-		return;
+	ioctl(sockfd, SIOCGIWESSID, &wreq);
+
+	close(sockfd);
 }
 
 /*** newstr_link ***/
