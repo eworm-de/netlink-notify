@@ -81,3 +81,4 @@ distclean:
 release:
 	git archive --format=tar.xz --prefix=netlink-notify-$(VERSION)/ $(VERSION) > netlink-notify-$(VERSION).tar.xz
 	gpg -ab netlink-notify-$(VERSION).tar.xz
+	git notes --ref=refs/notes/signatures/tar add -C $$(git archive --format=tar --prefix=netlink-notify-$(VERSION)/ $(VERSION) | gpg --armor --detach-sign | git hash-object -w --stdin) $(VERSION)
