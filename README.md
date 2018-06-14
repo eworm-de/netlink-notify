@@ -32,10 +32,10 @@ Requirements
 To compile and run `netlink-notify` you need:
 
 * [systemd](https://www.github.com/systemd/systemd)
-* [libnotify](http://library.gnome.org/devel/notification-spec/)
-* [linux](http://www.kernel.org/)
-* [markdown](http://daringfireball.net/projects/markdown/) (HTML documentation)
-* [inkscape](http://inkscape.sourceforge.net/) (convert icons from SVG to PNG)
+* [libnotify](https://developer.gnome.org/notification-spec/)
+* [linux](https://www.kernel.org/)
+* [markdown](https://daringfireball.net/projects/markdown/) (HTML documentation)
+* [inkscape](https://inkscape.org/) (convert icons from SVG to PNG)
 
 Some systems may require additional development packages for the libraries.
 Look for `libnotify-devel` or similar.
