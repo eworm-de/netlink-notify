@@ -1,5 +1,6 @@
 [Unit]
 Description=Netlink Notification
+ConditionUser=!@system
 
 [Service]
 Type=notify
