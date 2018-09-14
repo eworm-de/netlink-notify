@@ -1,5 +1,6 @@
 [Unit]
 Description=Netlink Notification
+Requires=dbus.socket
 ConditionUser=!@system
 
 [Service]
