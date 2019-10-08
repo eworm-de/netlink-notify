@@ -456,7 +456,7 @@ int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	notify_notification_update(notification, TEXT_TOPIC, notifystr, icon);
 
 	while (notify_notification_show(notification, &error) == FALSE) {
-		if (errcount > 1) {
+		if (errcount > 1 || doexit) {
 			fprintf(stderr, "%s: Looks like we can not reconnect to notification daemon... Exiting.\n", program);
 			goto out;
 		} else {
