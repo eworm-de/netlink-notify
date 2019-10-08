@@ -1,6 +1,9 @@
 [Unit]
 Description=Netlink Notification
 Requires=dbus.socket
+PartOf=graphical-session.target
+# Order after notification daemons to make sure it is stopped before.
+After=dunst.service xfce4-notifyd.service
 ConditionUser=!@system
 
 [Service]
