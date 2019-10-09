@@ -259,7 +259,6 @@ out:
 int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	int rc = EXIT_FAILURE;
 	char *notifystr = NULL;
-	unsigned int errcount = 0;
 	GError *error = NULL;
 	struct ifaddrmsg *ifa;
 	struct ifinfomsg *ifi;
@@ -456,25 +455,10 @@ int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	notify_notification_update(notification, TEXT_TOPIC, notifystr, icon);
 
 	while (notify_notification_show(notification, &error) == FALSE) {
-		if (errcount > 1 || doexit) {
-			fprintf(stderr, "%s: Looks like we can not reconnect to notification daemon... Exiting.\n", program);
-			goto out;
-		} else {
-			g_printerr("%s: Error \"%s\" while trying to show notification. Trying to reconnect.\n", program, error->message);
-			errcount++;
+		g_printerr("%s: Error showing notification: %s\n", program, error->message);
+		g_error_free(error);
 
-			g_error_free(error);
-			error = NULL;
-
-			notify_uninit();
-
-			usleep (500 * 1000);
-
-			if (notify_init(PROGNAME) == FALSE) {
-				fprintf(stderr, "%s: Can't create notify.\n", program);
-				goto out;
-			}
-		}
+		goto out;
 	}
 
 	rc = EXIT_SUCCESS;
@@ -482,7 +466,6 @@ int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 out:
 	if (tmp_notification)
 		g_object_unref(G_OBJECT(tmp_notification));
-	errcount = 0;
 	free(notifystr);
 
 	return rc;

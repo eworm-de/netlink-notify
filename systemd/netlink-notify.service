@@ -8,6 +8,7 @@ ConditionUser=!@system
 
 [Service]
 Type=notify
+Restart=on-failure
 ExecStart=/usr/bin/netlink-notify
 
 [Install]
