@@ -454,7 +454,7 @@ int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 
 	notify_notification_update(notification, TEXT_TOPIC, notifystr, icon);
 
-	while (notify_notification_show(notification, &error) == FALSE) {
+	if (notify_notification_show(notification, &error) == FALSE) {
 		g_printerr("%s: Error showing notification: %s\n", program, error->message);
 		g_error_free(error);
 
