@@ -24,7 +24,7 @@ VERSION := 0.8.0
 all: netlink-notify icons README.html
 
 netlink-notify: netlink-notify.c version.h config.h
-	$(CC) $(CFLAGS) $(LDFLAGS) -o netlink-notify netlink-notify.c
+	$(CC) netlink-notify.c $(CFLAGS) $(LDFLAGS) -o netlink-notify
 
 config.h:
 	$(CP) config.def.h config.h
