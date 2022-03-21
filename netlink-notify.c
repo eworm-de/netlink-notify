@@ -128,7 +128,7 @@ void get_ssid(const char *interface, char *essid) {
 	struct iwreq wreq;
 
 	memset(&wreq, 0, sizeof(struct iwreq));
-	snprintf(wreq.ifr_name, IFNAMSIZ, interface);
+	snprintf(wreq.ifr_name, IFNAMSIZ, "%s", interface);
 	wreq.u.essid.pointer = essid;
 	wreq.u.essid.length = IW_ESSID_MAX_SIZE + 1;
 
