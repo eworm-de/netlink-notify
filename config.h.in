@@ -16,8 +16,9 @@
  *
  */
 
-#ifndef CONFIG_H
-#define CONFIG_H
+#pragma once
+
+#define VERSION "@version@"
 
 /* how long to show notifications */
 #define NOTIFICATION_TIMEOUT	10000
@@ -34,5 +35,3 @@
 #define TEXT_WIRELESS	"Interface <b>%s</b> is <b>%s</b> on <b>%s</b>."
 #define TEXT_NEWADDR	"Interface <b>%s</b> has new %s address\n<b>%s</b>/%d."
 #define TEXT_DELLINK	"Interface <b>%s</b> has gone away."
-
-#endif /* CONFIG_H */

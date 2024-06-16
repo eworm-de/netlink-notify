@@ -48,7 +48,6 @@
 
 #include <libnotify/notify.h>
 
-#include "version.h"
 #include "config.h"
 
 #define PROGNAME	"netlink-notify"

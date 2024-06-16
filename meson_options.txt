@@ -1,0 +1,1 @@
+option('build_docs', type: 'boolean', value: true)
