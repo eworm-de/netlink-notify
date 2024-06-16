@@ -31,17 +31,15 @@
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>
-#include <linux/if.h>
-#include <linux/netlink.h>
-#include <linux/rtnetlink.h>
-#include <linux/wireless.h>
-/* we have to undefine this before including net/if.h to
- * notget redefined structs, etc. */
-#undef __USE_MISC
 #include <net/if.h>
 #include <netinet/in.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+
+#include <linux/if.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+#include <linux/wireless.h>
 
 /* systemd headers */
 #ifdef HAVE_SYSTEMD
