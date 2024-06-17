@@ -35,7 +35,7 @@ To compile and run `netlink-notify` you need:
 * [libnotify](https://developer.gnome.org/notification-spec/)
 * [linux](https://www.kernel.org/)
 * [markdown](https://daringfireball.net/projects/markdown/) (HTML documentation)
-* [inkscape](https://inkscape.org/) (convert icons from SVG to PNG)
+* [librsvg](https://wiki.gnome.org/Projects/LibRsvg) (convert icons from SVG to PNG)
 
 Some systems may require additional development packages for the libraries.
 Look for `libnotify-devel` or similar.
