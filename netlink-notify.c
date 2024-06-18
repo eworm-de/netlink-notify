@@ -540,8 +540,11 @@ int main (int argc, char **argv) {
 		goto out30;
 	}
 
-	signal(SIGINT, received_signal);
-	signal(SIGTERM, received_signal);
+	struct sigaction act = { 0 };
+	act.sa_handler = received_signal;
+
+	sigaction(SIGINT, &act, NULL);
+	sigaction(SIGTERM, &act, NULL);
 
 #ifdef HAVE_SYSTEMD
 	sd_notify(0, "READY=1\nSTATUS=Waiting for netlink events...");
