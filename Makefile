@@ -4,6 +4,7 @@
 CC	:= gcc
 MD	:= markdown
 CONVERT	:= rsvg-convert
+OXIPNG	:= oxipng
 INSTALL	:= install
 CP	:= cp
 RM	:= rm
@@ -36,6 +37,7 @@ icons: icons/netlink-notify-up.png icons/netlink-notify-down.png icons/netlink-n
 
 %.png: %.svg
 	$(CONVERT) $< > $@
+	-$(OXIPNG) $@
 
 README.html: README.md
 	$(MD) README.md > README.html
