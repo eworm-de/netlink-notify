@@ -34,17 +34,8 @@ version.h: $(wildcard .git/HEAD .git/index .git/refs/tags/*) Makefile
 
 icons: icons/netlink-notify-up.png icons/netlink-notify-down.png icons/netlink-notify-address.png icons/netlink-notify-away.png
 
-icons/netlink-notify-up.png: icons/netlink-notify-up.svg
-	$(CONVERT) icons/netlink-notify-up.svg > icons/netlink-notify-up.png
-
-icons/netlink-notify-down.png: icons/netlink-notify-down.svg
-	$(CONVERT) icons/netlink-notify-down.svg > icons/netlink-notify-down.png
-
-icons/netlink-notify-address.png: icons/netlink-notify-address.svg
-	$(CONVERT) icons/netlink-notify-address.svg > icons/netlink-notify-address.png
-
-icons/netlink-notify-away.png: icons/netlink-notify-away.svg
-	$(CONVERT) icons/netlink-notify-away.svg > icons/netlink-notify-away.png
+%.png: %.svg
+	$(CONVERT) $< > $@
 
 README.html: README.md
 	$(MD) README.md > README.html
