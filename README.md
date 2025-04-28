@@ -84,3 +84,6 @@ URL:
 Mirror:
 [eworm.de](https://git.eworm.de/cgit.cgi/netlink-notify/)
 [GitLab.com](https://gitlab.com/eworm-de/netlink-notify#netlink-notify)
+
+---
+[⬆️ Go back to top](#top)
