@@ -1,6 +1,10 @@
 netlink-notify
 ==============
 
+[![GitHub stars](https://img.shields.io/github/stars/eworm-de/netlink-notify?logo=GitHub&style=flat&color=red)](https://github.com/eworm-de/netlink-notify/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/eworm-de/netlink-notify?logo=GitHub&style=flat&color=green)](https://github.com/eworm-de/netlink-notify/network)
+[![GitHub watchers](https://img.shields.io/github/watchers/eworm-de/netlink-notify?logo=GitHub&style=flat&color=blue)](https://github.com/eworm-de/netlink-notify/watchers)
+
 **Notify about netlink changes**
 
 This runs in background and produces notifications whenever a netlink event
