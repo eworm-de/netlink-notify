@@ -54,11 +54,11 @@ Build and install
 
 Building and installing is very easy. Just run:
 
-> make
+    make
 
 followed by:
 
-> make install
+    make install
 
 This will place an executable at `/usr/bin/netlink-notify`,
 documentation can be found in `/usr/share/doc/netlink-notify/`.
