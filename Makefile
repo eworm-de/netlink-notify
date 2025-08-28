@@ -20,7 +20,8 @@ LDFLAGS	+= -Wl,-z,now -Wl,-z,relro -pie
 
 # this is just a fallback in case you do not use git but downloaded
 # a release tarball...
-VERSION := 0.8.1
+DISTVER := 0.8.1
+VERSION ?= $(shell git describe --long 2>/dev/null || echo $(DISTVER))
 
 all: netlink-notify icons README.html
 
@@ -72,6 +73,6 @@ distclean:
 	$(RM) -f *.o *~ README.html netlink-notify version.h config.h
 
 release:
-	git archive --format=tar.xz --prefix=netlink-notify-$(VERSION)/ $(VERSION) > netlink-notify-$(VERSION).tar.xz
-	gpg --armor --detach-sign --comment netlink-notify-$(VERSION).tar.xz netlink-notify-$(VERSION).tar.xz
-	git notes --ref=refs/notes/signatures/tar add -C $$(git archive --format=tar --prefix=netlink-notify-$(VERSION)/ $(VERSION) | gpg --armor --detach-sign --comment netlink-notify-$(VERSION).tar | git hash-object -w --stdin) $(VERSION)
+	git archive --format=tar.xz --prefix=netlink-notify-$(DISTVER)/ $(DISTVER) > netlink-notify-$(DISTVER).tar.xz
+	gpg --armor --detach-sign --comment netlink-notify-$(DISTVER).tar.xz netlink-notify-$(DISTVER).tar.xz
+	git notes --ref=refs/notes/signatures/tar add -C $$(git archive --format=tar --prefix=netlink-notify-$(DISTVER)/ $(DISTVER) | gpg --armor --detach-sign --comment netlink-notify-$(DISTVER).tar | git hash-object -w --stdin) $(DISTVER)
