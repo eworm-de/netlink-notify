@@ -32,7 +32,7 @@ config.h:
 	$(CP) config.def.h config.h
 
 version.h: $(wildcard .git/HEAD .git/index .git/refs/tags/*) Makefile
-	printf "#ifndef VERSION\n#define VERSION \"%s\"\n#endif\n" $(shell git describe --long 2>/dev/null || echo ${VERSION}) > $@
+	printf "#ifndef VERSION\n#define VERSION \"%s\"\n#endif\n" "$(VERSION)" > $@
 
 icons: icons/netlink-notify-up.png icons/netlink-notify-down.png icons/netlink-notify-address.png icons/netlink-notify-away.png
 
