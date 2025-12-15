@@ -461,7 +461,7 @@ int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	}
 
 	if (verbose > 0)
-		printf("%s: %s\n", program, notifystr);
+		printf("%s: %s (%s)\n", program, notifystr, icon);
 
 	notify_notification_update(notification, TEXT_TOPIC, notifystr, icon);
 
