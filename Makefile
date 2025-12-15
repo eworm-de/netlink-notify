@@ -3,7 +3,7 @@
 # commands
 CC	:= gcc
 MD	:= markdown
-CONVERT	:= rsvg-convert
+RESVG	:= resvg
 OXIPNG	:= oxipng
 INSTALL	:= install
 CP	:= cp
@@ -37,8 +37,7 @@ version.h: $(wildcard .git/HEAD .git/index .git/refs/tags/*) Makefile
 icons: icons/netlink-notify-up.png icons/netlink-notify-down.png icons/netlink-notify-address.png icons/netlink-notify-away.png
 
 %.png: %.svg
-	$(CONVERT) $< > $@
-	-$(OXIPNG) $@
+	$(RESVG) $< -c | $(OXIPNG) - > $@
 
 README.html: README.md
 	$(MD) README.md > README.html
