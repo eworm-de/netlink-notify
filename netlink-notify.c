@@ -276,7 +276,7 @@ int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	struct rtattr *rth;
 	int rtl;
 	char buf[INET6_ADDRSTRLEN];
-	NotifyNotification *tmp_notification = NULL, *notification = NULL;
+	NotifyNotification *addr_notification = NULL, *notification = NULL;
 	char *icon = NULL;
 
 	ifa = (struct ifaddrmsg *) NLMSG_DATA (msg);
@@ -377,17 +377,17 @@ int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 			}
 
 			/* do we want new notification, not update the notification about link status */
-			tmp_notification =
+			addr_notification =
 #				if NOTIFY_CHECK_VERSION(0, 7, 0)
 				notify_notification_new(TEXT_TOPIC, NULL, NULL);
 #				else
 				notify_notification_new(TEXT_TOPIC, NULL, NULL, NULL);
 #				endif
-			notify_notification_set_category(tmp_notification, PROGNAME);
-			notify_notification_set_urgency(tmp_notification, NOTIFY_URGENCY_NORMAL);
-			notify_notification_set_timeout(tmp_notification, notification_timeout);
+			notify_notification_set_category(addr_notification, PROGNAME);
+			notify_notification_set_urgency(addr_notification, NOTIFY_URGENCY_NORMAL);
+			notify_notification_set_timeout(addr_notification, notification_timeout);
 
-			notification = tmp_notification;
+			notification = addr_notification;
 
 			icon = ICON_NETWORK_ADDRESS;
 
@@ -475,8 +475,8 @@ int msg_handler (struct sockaddr_nl *nl, struct nlmsghdr *msg) {
 	rc = EXIT_SUCCESS;
 
 out:
-	if (tmp_notification)
-		g_object_unref(G_OBJECT(tmp_notification));
+	if (addr_notification)
+		g_object_unref(G_OBJECT(addr_notification));
 	free(notifystr);
 
 	return rc;
