@@ -42,7 +42,7 @@ icons: icons/netlink-notify-up.png icons/netlink-notify-down.png icons/netlink-n
 README.html: README.md
 	$(MD) README.md > README.html
 
-install: install-bin install-doc
+install: install-bin install-doc install-units
 
 install-bin: netlink-notify icons
 	$(INSTALL) -D -m0755 netlink-notify $(DESTDIR)/usr/bin/netlink-notify
@@ -54,6 +54,8 @@ install-bin: netlink-notify icons
 	$(INSTALL) -D -m0644 icons/netlink-notify-down.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-down.png
 	$(INSTALL) -D -m0644 icons/netlink-notify-address.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-address.png
 	$(INSTALL) -D -m0644 icons/netlink-notify-away.png $(DESTDIR)/usr/share/icons/hicolor/48x48/status/netlink-notify-away.png
+
+install-units:
 ifneq ($(CFLAGS_SYSTEMD),)
 	$(INSTALL) -D -m0644 systemd/netlink-notify.service $(DESTDIR)/usr/lib/systemd/user/netlink-notify.service
 endif
