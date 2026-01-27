@@ -16,6 +16,8 @@ ConditionUser=!@system
 [Service]
 Type=notify
 Restart=on-failure
+RestartSec=2s
+StartLimitInterval=12s
 ExecStart=/usr/bin/netlink-notify
 
 [Install]
